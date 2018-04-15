@@ -133,21 +133,24 @@ void Automata::ScanRegularExpression(string newString){
         cout<<"正规式字符串大小为空！"<<endl;
         exit(-1);
     }
+    
+    //以下注释部分与后面的函数结合，减少一次对正规式的遍历    at2018.04.15
     //对字符串中的元素筛查，完成字符集的定义
-    for(int i=0;i<stringLength;i++){
-        //检查不是运算符号
-        if(newString[i]=='(' || newString[i]==')' || newString[i]=='|' ||  newString[i]=='*')
-            continue;
-        //检查是否已经存在
-        bool charExist=false;
-        for(int j=0;j<charNum;j++)
-            if(chars[j]==newString[i])
-                charExist=true;
-        //向定义字符集添加新的字符
-        if(!charExist)
-            chars[charNum++]=newString[i];
-                
-    }
+//    for(int i=0;i<stringLength;i++){
+//        //检查不是运算符号
+//        if(newString[i]=='(' || newString[i]==')' || newString[i]=='|' ||  newString[i]=='*')
+//            continue;
+//        //检查是否已经存在
+//        bool charExist=false;
+//        for(int j=0;j<charNum;j++)
+//            if(chars[j]==newString[i])
+//                charExist=true;
+//        //向定义字符集添加新的字符
+//        if(!charExist)
+//            chars[charNum++]=newString[i];
+//                
+//    }
+    
     //修正正规式：在正规式外侧补充括号
     newString='('+newString+')';
     stringLength+=2;
@@ -228,6 +231,16 @@ void Automata::ScanRegularExpression(string newString){
             if(i!=stringLength-1)//不是结尾元素
                 if(newString[i+1]!='(' && newString[i+1]!=')' && newString[i+1]!='|' && newString[i+1]!='*')//下一个不是运算符号
                     signals.push('&');
+            
+            //增补上面注释掉的循环 at2018.04.15
+            //检查定义字符集是否包含
+            bool charExist=false;
+            for(int j=0;j<charNum;j++)
+                if(chars[j]==newString[i])
+                    charExist=true;
+            //向定义字符集添加新的字符
+            if(!charExist)
+                chars[charNum++]=newString[i];
         }
     }
     
