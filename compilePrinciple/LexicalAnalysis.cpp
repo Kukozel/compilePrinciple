@@ -8,6 +8,9 @@
 
 #include "LexicalAnalysis.hpp"
 
+
+//正规式转NFA部分：
+
 Automata::elem Automata::single(char c){
     //添加两个新的状态
     int s=stateID++;
@@ -302,10 +305,95 @@ void Automata::testFunction1(){
     cout<<endl<<"--------------------测试函数终止--------------------"<<endl;
 }
 
+//NFA转DFA部分：
+
+Automata::emptyClosure Automata::init_emptyClosure_noTransfer(int state){
+    emptyClosure eC;
+    eC.state=state;         //确定当前状态
+    //空包运算
+    for(int i=0;i<edgeNum;i++){
+        if(edges[i].start != state)
+            continue;
+        if(edges[i].condition!=EmptyShift)
+            continue;
+        bool ifHasThisEnd=false;
+        for(int j=0;j<eC.e_Closure_len;j++)
+            if(eC.e_Closure[j]==edges[i].end)
+                ifHasThisEnd=true;
+        if(!ifHasThisEnd)
+            eC.e_Closure[eC.e_Closure_len++]=edges[i].end;
+    }
+    
+    return eC;
+}
+
+Automata::emptyClosure* Automata::cal_AllState_emptyClosure(){
+    
+    emptyClosure *eC_S=new emptyClosure[stateNum];
+    
+    for(int i=0;i<stateNum;i++){
+        eC_S[i]=init_emptyClosure_noTransfer(S[i]);
+    }
+    
+    return  eC_S;
+}
+
+//用于sort的排序函数
+bool complare(int a,int b){
+    return a<b;
+}
+
+void Automata::init_emptyClosure_Transfer(emptyClosure * &AllState_emptyClosure){
+    
+    //对每一个空闭包扫描进行传递空闭包的运算
+    for(int i=0;i<stateNum;i++){
+        if(AllState_emptyClosure[i].e_Closure_len==0)
+            continue;
+        
+    //扫描空转移数组，加入传递闭包
+    //前提：Thompson算法不会产生空闭包Loop
+    for(int j=0;j<AllState_emptyClosure[i].e_Closure_len;j++){
+        //不会产生传递闭包
+        emptyClosure aimClosure=AllState_emptyClosure[AllState_emptyClosure[i].e_Closure[j]];
+        if(aimClosure.e_Closure_len==0)
+            continue;
+        //会产生传递闭包
+        for(int k=0;k<aimClosure.e_Closure_len;k++){
+            int temp=aimClosure.e_Closure[k];
+            bool ifHasTemp=false;
+            for(int l=0;l<AllState_emptyClosure[i].e_Closure_len;l++)
+                if(AllState_emptyClosure[i].e_Closure[l]==temp)
+                    ifHasTemp=true;
+            if(!ifHasTemp)
+                AllState_emptyClosure[i].e_Closure[AllState_emptyClosure[i].e_Closure_len++]=temp;
+        }
+    }
+        //对空闭包进行排序：从小到大
+        sort(AllState_emptyClosure[i].e_Closure, AllState_emptyClosure[i].e_Closure+AllState_emptyClosure[i].e_Closure_len, complare);
+        
+}
+    //显示所有状态的空闭包集合
+    if(showSomeProcess){
+        for(int i=0;i<stateNum;i++){
+            cout<<"当前状态: "<<i<<endl;
+            cout<<"空闭包: "<<endl;
+            if(AllState_emptyClosure[i].e_Closure_len==0){
+                cout<<"不存在!"<<endl;
+                cout<<endl<<"------------------------------------"<<endl;
+                continue;
+            }
+            for(int j=0;j<AllState_emptyClosure[i].e_Closure_len;j++)
+                cout<<AllState_emptyClosure[i].e_Closure[j]<<"  ";
+            cout<<endl<<"------------------------------------"<<endl;
+        }
+    }
+}
 
 
-
-
+void Automata::NFAtoDFA(){
+    emptyClosure* all_emptyClosure=cal_AllState_emptyClosure();
+    init_emptyClosure_Transfer(all_emptyClosure);
+}
 
 
 
