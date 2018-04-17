@@ -175,7 +175,7 @@ void Automata::ScanRegularExpression(string newString){
                 elements.pop();
                 elem temp2=elements.top();
                 elements.pop();
-                elements.push(Join(temp1, temp2, EmptyShift));
+                elements.push(Join(temp2, temp1, EmptyShift));
                 signals.pop();
             }
             //再处理或运算
@@ -214,7 +214,7 @@ void Automata::ScanRegularExpression(string newString){
                 elements.pop();
                 elem temp2=elements.top();
                 elements.pop();
-                elements.push(Join(temp1, temp2, EmptyShift));
+                elements.push(Join(temp2, temp1, EmptyShift));
                 signals.pop();
             }
             signals.push('|');
@@ -228,6 +228,10 @@ void Automata::ScanRegularExpression(string newString){
             elem topElem=elements.top();
             elements.pop();
             elements.push(Closures(topElem,EmptyShift));
+            //改错:闭包运算后需压栈'&'
+            if(i!=stringLength-1)//不是结尾元素
+                if(newString[i+1]!='(' && newString[i+1]!=')' && newString[i+1]!='|' && newString[i+1]!='*')//下一个不是运算符号
+                    signals.push('&');
         }else{
             //不是运算符号时，视为连接，数据直接推入数据栈，并添加运算符号'&'入符号栈
             elements.push(single(newString[i]));
@@ -368,8 +372,8 @@ void Automata::init_emptyClosure_Transfer(emptyClosure * &AllState_emptyClosure)
                 AllState_emptyClosure[i].e_Closure[AllState_emptyClosure[i].e_Closure_len++]=temp;
         }
     }
-        //对空闭包进行排序：从小到大
-        sort(AllState_emptyClosure[i].e_Closure, AllState_emptyClosure[i].e_Closure+AllState_emptyClosure[i].e_Closure_len, complare);
+//        //对空闭包进行排序：从小到大
+//        sort(AllState_emptyClosure[i].e_Closure, AllState_emptyClosure[i].e_Closure+AllState_emptyClosure[i].e_Closure_len, complare);
         
 }
     //显示所有状态的空闭包集合
@@ -389,10 +393,164 @@ void Automata::init_emptyClosure_Transfer(emptyClosure * &AllState_emptyClosure)
     }
 }
 
+int Automata::ifNewStateExist(DFAelem a,DFAelem b){
+    //大小不符合返回-2
+    if(a.ClosureSize!=b.ClosureSize)
+        return -2;
+    //对空闭包进行排序：从小到大
+    sort(a.Closure, a.Closure+a.ClosureSize, complare);
+    sort(b.Closure, b.Closure+b.ClosureSize, complare);
+    //内容不符合返回-3
+    for(int i=0;i<a.ClosureSize;i++)
+        if(a.Closure[i]!=b.Closure[i])
+            return -3;
+    //一样，返回存在的编号
+    return a.newState;
+}
+
+void Automata::improveDFAClosure(DFAelem &elem,int sID,emptyClosure* all){
+    //添加本元素，如果本元素在，则终止；不在还需要添加本元素的闭包。
+    bool exist=false;
+    for(int i=0;i<elem.ClosureSize;i++)
+        if(sID==elem.Closure[i])
+            exist=true;
+    if(exist)
+        return;
+    for(int i=0;i<all[sID].e_Closure_len;i++){
+        bool eExit=false;
+        for(int q=0;q<elem.ClosureSize;q++)
+            if(elem.Closure[q]==all[sID].e_Closure[i])
+                eExit=true;
+        if(!eExit)
+            elem.Closure[elem.ClosureSize++]=all[sID].e_Closure[i];
+        
+    }
+    elem.Closure[elem.ClosureSize++]=sID;
+}
+
+void Automata::mergeNFA(emptyClosure * &AllState_emptyClosure){
+    //新的move函数用栈存储,最后更新进edges中
+    stack<Edge> newEdges;
+    //新的状态集数组
+    DFAelem * newSList=new DFAelem[stateNum];
+    //新的状态集个数
+    int newstateNum=0;
+    
+    //初始化新的初态
+    newSList[0].newState=0;
+    improveDFAClosure(newSList[0],S0,AllState_emptyClosure);
+    newstateNum++;
+    
+    if(showSomeProcess){
+        cout<<endl<<"-----------First NFA Unit-----------"<<endl;
+        cout<<"Old S0:"<<S0<<endl;
+        cout<<"本状态集内容:"<<endl;
+        for(int p=0;p<newSList[0].ClosureSize;p++)
+            cout<<newSList[0].Closure[p]<<"  ";
+        cout<<endl<<"------------------------------------"<<endl;
+    }
+    
+    
+    
+    //开始扫描，生成完整的新的DFA
+    for(int j=0;j<newstateNum;j++){
+        //对字符集扫描遍历,针对每一个非空转移条件
+        for(int k=0;k<charNum;k++){
+            //对本状态的空闭包扫描
+            //是否存在该字符的转移
+            bool existS=false;
+            for(int l=0;l<newSList[j].ClosureSize;l++){
+                //该状态在该字符集下的转移情况
+                for(int m=0;m<edgeNum;m++){
+                    //存在转移条件
+                    if(newSList[j].Closure[l]==edges[m].start && chars[k]==edges[m].condition){
+                        existS=true;
+                        improveDFAClosure(newSList[newstateNum],edges[m].end,AllState_emptyClosure);
+                    }
+                }
+            }
+            //存在转移
+            if(existS){
+                //判断是否产生新的状态，新的状态还要判断是否是新的终态
+                int endId=-9;
+                for(int n=0;n<newstateNum;n++){
+                    endId=ifNewStateExist(newSList[n],newSList[newstateNum]);
+                    if(endId>=0)
+                        break;
+                }
+                
+                //检错
+                if(endId==-9){
+                    cout<<"DFA判断越界!";
+                    exit(-1);
+                }
+                //是新的状态
+                if(endId<0){
+                    newSList[newstateNum].newState=newstateNum;
+                    endId=newstateNum++;
+                }else{
+                    //销毁newSList[newstateNum]
+                    newSList[newstateNum].ClosureSize=0;
+                }
+                //添加转移的边
+                Edge newE;
+                newE.start=j;
+                newE.end=endId;
+                newE.condition=chars[k];
+                newEdges.push(newE);
+            }
+        }
+    }
+    
+    //设置新的起点
+    S0=0;
+    //设置新的终点集
+    for(int p=0;p<newstateNum;p++){
+        bool ifNewF=false;
+        for(int q=0;q<newSList[p].ClosureSize;q++)
+            if(newSList[p].Closure[q]==F){
+                ifNewF=true;
+                break;
+            }
+        if(ifNewF)
+            Fs[FsNum++]=newSList[p].newState;
+    }
+    //设置新的转移函数
+    edgeNum=0;
+    while (!newEdges.empty()) {
+        edges[edgeNum++]=newEdges.top();
+        newEdges.pop();
+    }
+    
+    if(showSomeProcess){
+        cout<<endl<<"-------------NFA Unit-------------"<<endl;
+        cout<<"新状态集个数:"<<newstateNum<<endl<<endl;
+        for(int p=0;p<newstateNum;p++){
+            cout<<"New State ID:"<<newSList[p].newState<<endl;
+            cout<<"空闭包集合:";
+            for(int q=0;q<newSList[p].ClosureSize;q++)
+                cout<<newSList[p].Closure[q]<<"  ";
+            cout<<endl<<endl;
+        }
+        cout<<"新的转移函数:"<<endl;
+        for(int q=0;q<edgeNum;q++)
+            cout<<"start: "<<edges[q].start<<" end: "<<edges[q].end<<" condition: "<<edges[q].condition<<endl;
+        cout<<endl;
+        cout<<"新的起点:"<<S0<<endl;
+        cout<<"新的终点集:";
+        for(int p=0;p<FsNum;p++)
+            cout<<Fs[p]<<"  ";
+            cout<<endl;
+        cout<<"----------------------------------"<<endl;
+    }
+    
+    
+}
 
 void Automata::NFAtoDFA(){
     emptyClosure* all_emptyClosure=cal_AllState_emptyClosure();
     init_emptyClosure_Transfer(all_emptyClosure);
+    mergeNFA(all_emptyClosure);
 }
 
 

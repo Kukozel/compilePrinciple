@@ -9,6 +9,7 @@
 #include <iostream>
 #include "LexicalAnalysis.hpp"
 using namespace std;
+
 int main(int argc, const char * argv[]) {
     
     //传参调用，参数为字符串类型的正规式
@@ -19,5 +20,6 @@ int main(int argc, const char * argv[]) {
     test->testFunction1();
     test->NFAtoDFA();
     
+
     
 }

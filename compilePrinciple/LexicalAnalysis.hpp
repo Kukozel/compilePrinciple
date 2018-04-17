@@ -63,6 +63,10 @@ private:
     //定义初态和终止状态
     int S0,F;
     
+    //定义终止状态集(DFA中可能存在多个终止状态)
+    int Fs[StateMaxSize];
+    int FsNum=0;
+    
     //定义正规式,数据栈,符号栈
     string RegularExpression="";
     struct elem{
@@ -91,6 +95,11 @@ private:
         bool ifFinal=false;                     //初始默认不是终态
     };
     
+    struct DFAelem{
+        int newState;//新的状态编号
+        int Closure[EmptyClosureSize];//转移到新状态的空转移集合
+        int ClosureSize=0;//Closure的大小
+    };
     //TODO：最小化DFA
     
 public:
@@ -104,6 +113,10 @@ public:
     emptyClosure init_emptyClosure_noTransfer(int state);     //非传递闭包运算初始化
     emptyClosure* cal_AllState_emptyClosure();   //全部状态进行非转移直接闭包运算初始化
     void init_emptyClosure_Transfer(emptyClosure * &AllState_emptyClosure);     //传递闭包运算,在全部状态进行非传递直接闭包运算初始化基础上进行
+    int ifNewStateExist(DFAelem a,DFAelem b);//判断新规划的状态是否已经存在
+    void improveDFAClosure(DFAelem &elem,int sID,emptyClosure* all);//DFA中的Closure包含直接转移后的状态，和这些状态的空闭包两部分
+    void mergeNFA(emptyClosure * &AllState_emptyClosure);
+    
     
     void NFAtoDFA();
     
