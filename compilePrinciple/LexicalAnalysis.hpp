@@ -38,7 +38,7 @@ private:
     static const int EmptyClosureSize=64;//空转移集合最大状态
     
     //打开/关闭部分状态信息显示
-    bool showSomeProcess=true;
+    bool showSomeProcess=false;
     
     //定义Edge结构体
     struct Edge{
@@ -77,8 +77,8 @@ private:
     stack<char> signals;//符号栈
     
     //定义私有函数
-    void writeNowState(string filename);//结果写入文件
-    void printNowState();//结果输出
+    void writeNowState(string filename,int Fstate);//结果写入文件
+    void printNowState(int choose);//结果输出
     
     //TODO：正规式转换NFA
     void ScanRegularExpression(string newString);//扫描正规式
@@ -104,7 +104,7 @@ private:
     
 public:
     Automata();//无参构造函数，自动初始化
-    Automata(string RegularExpression);//传入正规式
+    Automata(string RegularExpressionIn);//传入正规式
    
     //正规式转换NFA部分
     void testFunction1();//测试函数,测试正规式(a|b)*到NFA的转换

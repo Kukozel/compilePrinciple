@@ -96,7 +96,7 @@ Automata::elem Automata::Closures(elem a,char c){
     return newElem;
 }
 
-void Automata::writeNowState(string filename){
+void Automata::writeNowState(string filename,int Fstate){
     cout<<"正规式转化NFA结果，将写入文件："<<filename<<endl<<endl;
     ofstream SaveFile(filename);
     if(!SaveFile.is_open()){
@@ -125,7 +125,14 @@ void Automata::writeNowState(string filename){
     SaveFile<<endl;
     //写入初态,终态情况
     SaveFile<<"初态:"<<S0<<endl;
-    SaveFile<<"终态:"<<F<<endl;
+    if(Fstate==1)
+        SaveFile<<"终态:"<<F<<endl;
+    if(Fstate==2){
+        SaveFile<<"终态集:";
+        for(int q=0;q<FsNum;q++)
+            SaveFile<<Fs[q]<<"  ";
+        SaveFile<<endl;
+    }
     SaveFile.close();
 }
 
@@ -261,10 +268,10 @@ void Automata::ScanRegularExpression(string newString){
     F=elements.top().end;
     
     //输出当前NFA状态到文件 "ResultOfNFA_RegularExpression.txt"
-    writeNowState("ResultOfNFA_"+RegularExpression+".txt");
+    writeNowState("ResultOfNFA_"+RegularExpression+".txt",1);
 }
 
-void Automata::printNowState(){
+void Automata::printNowState(int choose){
     //输出正规式
     cout<<"正规式为:"<<RegularExpression<<endl<<endl;
     //输出字符集情况
@@ -287,26 +294,17 @@ void Automata::printNowState(){
     cout<<endl;
     //输出初态,终态情况
     cout<<"初态:"<<S0<<endl;
-    cout<<"终态:"<<F<<endl;
-}
-
-
-Automata::Automata(){
-    cout<<"已调用Automata无参构造函数..."<<endl;
-}
-
-Automata::Automata(string RegularExpression){
-    ScanRegularExpression(RegularExpression);
-    printNowState();
-}
-
-void Automata::testFunction1(){
-    cout<<endl<<"--------------------执行测试函数--------------------"<<endl;
-    string testString="(a|b)*";
-    RegularExpression=testString;
-    ScanRegularExpression(testString);
-    printNowState();
-    cout<<endl<<"--------------------测试函数终止--------------------"<<endl;
+    //choose=1时输出终态；choose=2时输出终态集。
+    if(choose==1)
+        cout<<"终态:"<<F<<endl;
+    if(choose==2){
+        cout<<"终态集:";
+        for(int p=0;p<FsNum;p++)
+            cout<<Fs[p]<<"  ";
+        cout<<endl;
+    }
+    
+    
 }
 
 //NFA转DFA部分：
@@ -522,6 +520,9 @@ void Automata::mergeNFA(emptyClosure * &AllState_emptyClosure){
         newEdges.pop();
     }
     
+    //输出当前NFA状态到文件 "ResultOfDFA_RegularExpression.txt"
+    writeNowState("ResultOfDFA_"+RegularExpression+".txt",2);
+    
     if(showSomeProcess){
         cout<<endl<<"-------------NFA Unit-------------"<<endl;
         cout<<"新状态集个数:"<<newstateNum<<endl<<endl;
@@ -537,7 +538,7 @@ void Automata::mergeNFA(emptyClosure * &AllState_emptyClosure){
             cout<<"start: "<<edges[q].start<<" end: "<<edges[q].end<<" condition: "<<edges[q].condition<<endl;
         cout<<endl;
         cout<<"新的起点:"<<S0<<endl;
-        cout<<"新的终点集:";
+        cout<<"新的终态集:";
         for(int p=0;p<FsNum;p++)
             cout<<Fs[p]<<"  ";
             cout<<endl;
@@ -551,6 +552,35 @@ void Automata::NFAtoDFA(){
     emptyClosure* all_emptyClosure=cal_AllState_emptyClosure();
     init_emptyClosure_Transfer(all_emptyClosure);
     mergeNFA(all_emptyClosure);
+}
+
+
+
+//构造函数和测试函数
+Automata::Automata(){
+    cout<<"已调用Automata无参构造函数..."<<endl;
+}
+
+Automata::Automata(string RegularExpressionIn){
+    RegularExpression=RegularExpressionIn;
+    ScanRegularExpression(RegularExpression);
+    printNowState(1);
+    NFAtoDFA();
+    printNowState(2);
+}
+
+void Automata::testFunction1(){
+    cout<<endl<<"--------------------执行测试函数--------------------"<<endl;
+    cout<<"测试NFA部分:"<<endl;
+    string testString="(a|b)*";
+    RegularExpression=testString;
+    ScanRegularExpression(testString);
+    printNowState(1);
+    cout<<endl<<"-------------------------------------------------"<<endl;
+    cout<<endl<<"测试DFA部分"<<endl;
+    NFAtoDFA();
+    printNowState(2);
+    cout<<endl<<"--------------------测试函数终止--------------------"<<endl;
 }
 
 
