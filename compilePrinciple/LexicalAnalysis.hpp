@@ -14,6 +14,7 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+
 using namespace std;
 
 /*TODO：
@@ -81,7 +82,6 @@ private:
     void printNowState(int choose);//结果输出
     
     //TODO：正规式转换NFA
-    void ScanRegularExpression(string newString);//扫描正规式
     elem single(char c);//新增节点
     elem Branch(elem a, elem b, char c);//或运算
     elem Join(elem a, elem b,char c);//链接运算
@@ -103,11 +103,15 @@ private:
     //TODO：最小化DFA
     
 public:
+    //构造函数部分
     Automata();//无参构造函数，自动初始化
     Automata(string RegularExpressionIn);//传入正规式
    
-    //正规式转换NFA部分
+    //测试函数部分
     void testFunction1();//测试函数,测试正规式(a|b)*到NFA的转换
+    
+    //正规式转换DFA部分
+    void ScanRegularExpression(string newString);//扫描正规式并转换
     
     //NFA转换DFA部分
     emptyClosure init_emptyClosure_noTransfer(int state);     //非传递闭包运算初始化
@@ -115,11 +119,8 @@ public:
     void init_emptyClosure_Transfer(emptyClosure * &AllState_emptyClosure);     //传递闭包运算,在全部状态进行非传递直接闭包运算初始化基础上进行
     int ifNewStateExist(DFAelem a,DFAelem b);//判断新规划的状态是否已经存在
     void improveDFAClosure(DFAelem &elem,int sID,emptyClosure* all);//DFA中的Closure包含直接转移后的状态，和这些状态的空闭包两部分
-    void mergeNFA(emptyClosure * &AllState_emptyClosure);
-    
-    
-    void NFAtoDFA();
-    
+    void mergeNFA(emptyClosure * &AllState_emptyClosure);//DFA合并，消除空闭包
+    void NFAtoDFA();//NFA转换DFA流程控制
     
     //最小化DFA部分
     

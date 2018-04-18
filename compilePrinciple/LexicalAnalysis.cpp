@@ -8,7 +8,6 @@
 
 #include "LexicalAnalysis.hpp"
 
-
 //正规式转NFA部分：
 
 Automata::elem Automata::single(char c){
@@ -146,7 +145,6 @@ void Automata::ScanRegularExpression(string newString){
         cout<<"正规式字符串大小为空！"<<endl;
         exit(-1);
     }
-    
     //以下注释部分与后面的函数结合，减少一次对正规式的遍历    at2018.04.15
     //对字符串中的元素筛查，完成字符集的定义
 //    for(int i=0;i<stringLength;i++){
@@ -163,7 +161,6 @@ void Automata::ScanRegularExpression(string newString){
 //            chars[charNum++]=newString[i];
 //                
 //    }
-    
     //修正正规式：在正规式外侧补充括号
     newString='('+newString+')';
     stringLength+=2;
@@ -248,7 +245,6 @@ void Automata::ScanRegularExpression(string newString){
             if(i!=stringLength-1)//不是结尾元素
                 if(newString[i+1]!='(' && newString[i+1]!=')' && newString[i+1]!='|' && newString[i+1]!='*')//下一个不是运算符号
                     signals.push('&');
-            
             //增补上面注释掉的循环 at2018.04.15
             //检查定义字符集是否包含
             bool charExist=false;
@@ -260,16 +256,13 @@ void Automata::ScanRegularExpression(string newString){
                 chars[charNum++]=newString[i];
         }
     }
-    
     //处理状态集
     stateNum=stateID;
     for(int i=0;i<stateNum;i++)
         S[i]=i;
-    
     //处理初态和终态
     S0=elements.top().start;
     F=elements.top().end;
-    
     //输出当前NFA状态到文件 "ResultOfNFA_RegularExpression.txt"
     writeNowState("ResultOfNFA_"+RegularExpression+".txt",1);
 }
@@ -313,7 +306,8 @@ void Automata::printNowState(int choose){
 
 Automata::emptyClosure Automata::init_emptyClosure_noTransfer(int state){
     emptyClosure eC;
-    eC.state=state;         //确定当前状态
+    //确定当前状态
+    eC.state=state;
     //空包运算
     for(int i=0;i<edgeNum;i++){
         if(edges[i].start != state)
@@ -327,18 +321,13 @@ Automata::emptyClosure Automata::init_emptyClosure_noTransfer(int state){
         if(!ifHasThisEnd)
             eC.e_Closure[eC.e_Closure_len++]=edges[i].end;
     }
-    
     return eC;
 }
 
 Automata::emptyClosure* Automata::cal_AllState_emptyClosure(){
-    
     emptyClosure *eC_S=new emptyClosure[stateNum];
-    
-    for(int i=0;i<stateNum;i++){
+    for(int i=0;i<stateNum;i++)
         eC_S[i]=init_emptyClosure_noTransfer(S[i]);
-    }
-    
     return  eC_S;
 }
 
@@ -348,12 +337,10 @@ bool complare(int a,int b){
 }
 
 void Automata::init_emptyClosure_Transfer(emptyClosure * &AllState_emptyClosure){
-    
     //对每一个空闭包扫描进行传递空闭包的运算
     for(int i=0;i<stateNum;i++){
         if(AllState_emptyClosure[i].e_Closure_len==0)
             continue;
-        
     //扫描空转移数组，加入传递闭包
     //前提：Thompson算法不会产生空闭包Loop
     for(int j=0;j<AllState_emptyClosure[i].e_Closure_len;j++){
@@ -372,9 +359,6 @@ void Automata::init_emptyClosure_Transfer(emptyClosure * &AllState_emptyClosure)
                 AllState_emptyClosure[i].e_Closure[AllState_emptyClosure[i].e_Closure_len++]=temp;
         }
     }
-//        //对空闭包进行排序：从小到大
-//        sort(AllState_emptyClosure[i].e_Closure, AllState_emptyClosure[i].e_Closure+AllState_emptyClosure[i].e_Closure_len, complare);
-        
 }
     //显示所有状态的空闭包集合
     if(showSomeProcess){
@@ -423,7 +407,6 @@ void Automata::improveDFAClosure(DFAelem &elem,int sID,emptyClosure* all){
                 eExit=true;
         if(!eExit)
             elem.Closure[elem.ClosureSize++]=all[sID].e_Closure[i];
-        
     }
     elem.Closure[elem.ClosureSize++]=sID;
 }
@@ -435,12 +418,10 @@ void Automata::mergeNFA(emptyClosure * &AllState_emptyClosure){
     DFAelem * newSList=new DFAelem[stateNum];
     //新的状态集个数
     int newstateNum=0;
-    
     //初始化新的初态
     newSList[0].newState=0;
     improveDFAClosure(newSList[0],S0,AllState_emptyClosure);
     newstateNum++;
-    
     if(showSomeProcess){
         cout<<endl<<"-----------First NFA Unit-----------"<<endl;
         cout<<"Old S0:"<<S0<<endl;
@@ -449,9 +430,6 @@ void Automata::mergeNFA(emptyClosure * &AllState_emptyClosure){
             cout<<newSList[0].Closure[p]<<"  ";
         cout<<endl<<"------------------------------------"<<endl;
     }
-    
-    
-    
     //开始扫描，生成完整的新的DFA
     for(int j=0;j<newstateNum;j++){
         //对字符集扫描遍历,针对每一个非空转移条件
@@ -478,7 +456,6 @@ void Automata::mergeNFA(emptyClosure * &AllState_emptyClosure){
                     if(endId>=0)
                         break;
                 }
-                
                 //检错
                 if(endId==-9){
                     cout<<"DFA判断越界!";
@@ -501,7 +478,6 @@ void Automata::mergeNFA(emptyClosure * &AllState_emptyClosure){
             }
         }
     }
-    
     //设置新的起点
     S0=0;
     //设置新的终点集
@@ -521,13 +497,11 @@ void Automata::mergeNFA(emptyClosure * &AllState_emptyClosure){
         edges[edgeNum++]=newEdges.top();
         newEdges.pop();
     }
-    
     //输出当前NFA状态到文件 "ResultOfDFA_RegularExpression.txt"
     writeNowState("ResultOfDFA_"+RegularExpression+".txt",2);
-    
     //销毁分配的空间
     delete [] newSList;
-    
+    //显示部分过程
     if(showSomeProcess){
         cout<<endl<<"-------------NFA Unit-------------"<<endl;
         cout<<"新状态集个数:"<<newstateNum<<endl<<endl;
@@ -549,8 +523,6 @@ void Automata::mergeNFA(emptyClosure * &AllState_emptyClosure){
             cout<<endl;
         cout<<"----------------------------------"<<endl;
     }
-    
-    
 }
 
 void Automata::NFAtoDFA(){
@@ -559,9 +531,22 @@ void Automata::NFAtoDFA(){
     mergeNFA(all_emptyClosure);
 }
 
+//最小DFA部分：
 
 
-//构造函数和测试函数
+
+
+
+
+
+
+
+
+
+
+
+//构造函数和测试函数部分
+
 Automata::Automata(){
     cout<<"已调用Automata无参构造函数..."<<endl;
 }
