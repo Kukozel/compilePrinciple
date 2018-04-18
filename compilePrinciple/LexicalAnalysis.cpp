@@ -97,7 +97,10 @@ Automata::elem Automata::Closures(elem a,char c){
 }
 
 void Automata::writeNowState(string filename,int Fstate){
-    cout<<"正规式转化NFA结果，将写入文件："<<filename<<endl<<endl;
+    if(Fstate==1)
+        cout<<"正规式转化NFA结果将写入文件："<<filename<<endl<<endl;
+    if(Fstate==2)
+        cout<<"NFA转化DFA结果将写入文件："<<filename<<endl<<endl;
     ofstream SaveFile(filename);
     if(!SaveFile.is_open()){
         cout<<"文件打开/创建失败!";
@@ -303,8 +306,7 @@ void Automata::printNowState(int choose){
             cout<<Fs[p]<<"  ";
         cout<<endl;
     }
-    
-    
+    cout<<"-----------------------------------------"<<endl;
 }
 
 //NFA转DFA部分：
@@ -522,6 +524,9 @@ void Automata::mergeNFA(emptyClosure * &AllState_emptyClosure){
     
     //输出当前NFA状态到文件 "ResultOfDFA_RegularExpression.txt"
     writeNowState("ResultOfDFA_"+RegularExpression+".txt",2);
+    
+    //销毁分配的空间
+    delete [] newSList;
     
     if(showSomeProcess){
         cout<<endl<<"-------------NFA Unit-------------"<<endl;
