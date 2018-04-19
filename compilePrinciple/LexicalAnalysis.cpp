@@ -145,22 +145,6 @@ void Automata::ScanRegularExpression(string newString){
         cout<<"正规式字符串大小为空！"<<endl;
         exit(-1);
     }
-    //以下注释部分与后面的函数结合，减少一次对正规式的遍历    at2018.04.15
-    //对字符串中的元素筛查，完成字符集的定义
-//    for(int i=0;i<stringLength;i++){
-//        //检查不是运算符号
-//        if(newString[i]=='(' || newString[i]==')' || newString[i]=='|' ||  newString[i]=='*')
-//            continue;
-//        //检查是否已经存在
-//        bool charExist=false;
-//        for(int j=0;j<charNum;j++)
-//            if(chars[j]==newString[i])
-//                charExist=true;
-//        //向定义字符集添加新的字符
-//        if(!charExist)
-//            chars[charNum++]=newString[i];
-//                
-//    }
     //修正正规式：在正规式外侧补充括号
     newString='('+newString+')';
     stringLength+=2;
@@ -245,7 +229,6 @@ void Automata::ScanRegularExpression(string newString){
             if(i!=stringLength-1)//不是结尾元素
                 if(newString[i+1]!='(' && newString[i+1]!=')' && newString[i+1]!='|' && newString[i+1]!='*')//下一个不是运算符号
                     signals.push('&');
-            //增补上面注释掉的循环 at2018.04.15
             //检查定义字符集是否包含
             bool charExist=false;
             for(int j=0;j<charNum;j++)
@@ -491,6 +474,8 @@ void Automata::mergeNFA(emptyClosure * &AllState_emptyClosure){
         if(ifNewF)
             Fs[FsNum++]=newSList[p].newState;
     }
+    //更新状态集
+    stateNum=newstateNum;
     //设置新的转移函数
     edgeNum=0;
     while (!newEdges.empty()) {
@@ -533,6 +518,65 @@ void Automata::NFAtoDFA(){
 
 //最小DFA部分：
 
+Automata::MinDFAelem* Automata::init_divideStartOrFinal(){
+    MinDFAelem * result=NULL;
+    //初始化大小为当前转移函数总数量
+    result=new MinDFAelem[stateNum];
+    for(int i=0;i<stateNum;i++){
+        //确定当前状态
+        result[i].minDFA_state=i;
+        //确定当前状态分类
+        result[i].minDFA_class=0;
+        for(int j=0;j<FsNum;j++)
+            if(result[i].minDFA_state==Fs[j])
+                result[i].minDFA_class=1;
+        //添加相应边
+        //设置空边条件
+        Edge emptyEdge;
+        emptyEdge.start=-1;
+        emptyEdge.end=-1;
+        emptyEdge.condition=EmptyShift;
+        //对边初始化,全部初始化为空边,再更新存在的边
+        result[i].minDFA_edges=new Edge[charNum];
+        for(int j=0;j<charNum;j++)
+            result[i].minDFA_edges[j]=emptyEdge;
+        for(int j=0;j<edgeNum;j++){
+            if(edges[j].start==result[i].minDFA_state){
+                for(int k=0;k<charNum;k++)
+                    if(chars[k]==edges[j].condition){
+                        result[i].minDFA_edges[k]=edges[j];
+                        break;
+                    }
+            }
+        }
+    }
+    //测试过程
+    if(showSomeProcess){
+        cout<<endl<<"--------------------最小DFA初始化流程---------------------"<<endl;
+        for(int i=0;i<stateNum;i++){
+            cout<<"状态ID: "<<result[i].minDFA_state<<endl;
+            cout<<"ID类属: ";
+            if(result[i].minDFA_class==0)
+                cout<<"非终态"<<endl;
+            else
+                cout<<"终态"<<endl;
+            cout<<"转移函数:"<<endl;
+            for(int j=0;j<charNum;j++){
+                cout<<"条件: "<<chars[j];
+                if(result[i].minDFA_edges[j].end==-1){
+                    cout<<" 不存在"<<endl;
+                }else{
+                    cout<<" 终点:"<<result[i].minDFA_edges[j].end<<"  "<<endl;
+                }
+            }
+            cout<<endl;
+        }
+        
+        
+        cout<<endl<<"---------------------------------------------------"<<endl;
+    }
+    return result;
+}
 
 
 
@@ -542,8 +586,9 @@ void Automata::NFAtoDFA(){
 
 
 
-
-
+void Automata::DFAtoMinDFA(){
+    MinDFAelem* minDFA=init_divideStartOrFinal();
+}
 
 //构造函数和测试函数部分
 
@@ -552,24 +597,33 @@ Automata::Automata(){
 }
 
 Automata::Automata(string RegularExpressionIn){
+    //执行正规式转换NFA
     RegularExpression=RegularExpressionIn;
     ScanRegularExpression(RegularExpression);
     printNowState(1);
+    //执行NFA转换DFA
     NFAtoDFA();
     printNowState(2);
+    //执行DFA转换MinDFA
 }
 
 void Automata::testFunction1(){
+    //测试NFA部分
     cout<<endl<<"--------------------执行测试函数--------------------"<<endl;
     cout<<"测试NFA部分:"<<endl;
-    string testString="(a|b)*";
+    string testString="abc";
     RegularExpression=testString;
     ScanRegularExpression(testString);
     printNowState(1);
+    //测试DFA部分
     cout<<endl<<"-------------------------------------------------"<<endl;
     cout<<endl<<"测试DFA部分"<<endl;
     NFAtoDFA();
     printNowState(2);
+    //测试MinDFA部分
+    cout<<endl<<"-------------------------------------------------"<<endl;
+    cout<<endl<<"测试MinDFA部分"<<endl;
+    DFAtoMinDFA();
     cout<<endl<<"--------------------测试函数终止--------------------"<<endl;
 }
 

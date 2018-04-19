@@ -100,7 +100,13 @@ private:
         int Closure[EmptyClosureSize];//转移到新状态的空转移集合
         int ClosureSize=0;//Closure的大小
     };
+    
     //TODO：最小化DFA
+    struct MinDFAelem{
+        int minDFA_state;//当前状态
+        Edge *minDFA_edges;//当前状态具有的转移边
+        int minDFA_class;//属于那一类,初始化时非终态为0，终态为1
+    };
     
 public:
     //构造函数部分
@@ -123,9 +129,9 @@ public:
     void NFAtoDFA();//NFA转换DFA流程控制
     
     //最小化DFA部分
+    MinDFAelem* init_divideStartOrFinal();//将转移函数划分为初态和终态两部分
     
-    
-    
+    void DFAtoMinDFA();//DFA转换MinDFA流程控制
 };
 
 #endif /* LexicalAnalysis_hpp */
