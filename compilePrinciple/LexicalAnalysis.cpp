@@ -100,6 +100,8 @@ void Automata::writeNowState(string filename,int Fstate){
         cout<<"正规式转化NFA结果将写入文件："<<filename<<endl<<endl;
     if(Fstate==2)
         cout<<"NFA转化DFA结果将写入文件："<<filename<<endl<<endl;
+    if(Fstate==3)
+        cout<<"最小化DFA结果将写入文件："<<filename<<endl<<endl;
     ofstream SaveFile(filename);
     if(!SaveFile.is_open()){
         cout<<"文件打开/创建失败!";
@@ -129,7 +131,7 @@ void Automata::writeNowState(string filename,int Fstate){
     SaveFile<<"初态:"<<S0<<endl;
     if(Fstate==1)
         SaveFile<<"终态:"<<F<<endl;
-    if(Fstate==2){
+    if(Fstate==2 || Fstate==3){
         SaveFile<<"终态集:";
         for(int q=0;q<FsNum;q++)
             SaveFile<<Fs[q]<<"  ";
@@ -488,7 +490,7 @@ void Automata::mergeNFA(emptyClosure * &AllState_emptyClosure){
     delete [] newSList;
     //显示部分过程
     if(showSomeProcess){
-        cout<<endl<<"-------------NFA Unit-------------"<<endl;
+        cout<<endl<<"---------------NFA Unit-------------"<<endl;
         cout<<"新状态集个数:"<<newstateNum<<endl<<endl;
         for(int p=0;p<newstateNum;p++){
             cout<<"New State ID:"<<newSList[p].newState<<endl;
@@ -525,6 +527,8 @@ Automata::MinDFAelem* Automata::init_divideStartOrFinal(){
     for(int i=0;i<stateNum;i++){
         //确定当前状态
         result[i].minDFA_state=i;
+        //初始化转移函数数量
+        result[i].hasEdgeNum=0;
         //确定当前状态分类
         result[i].minDFA_class=0;
         for(int j=0;j<FsNum;j++)
@@ -545,6 +549,7 @@ Automata::MinDFAelem* Automata::init_divideStartOrFinal(){
                 for(int k=0;k<charNum;k++)
                     if(chars[k]==edges[j].condition){
                         result[i].minDFA_edges[k]=edges[j];
+                        result[i].hasEdgeNum++;
                         break;
                     }
             }
@@ -560,6 +565,7 @@ Automata::MinDFAelem* Automata::init_divideStartOrFinal(){
                 cout<<"非终态"<<endl;
             else
                 cout<<"终态"<<endl;
+            cout<<"转移函数数量: "<<result[i].hasEdgeNum<<endl;
             cout<<"转移函数:"<<endl;
             for(int j=0;j<charNum;j++){
                 cout<<"条件: "<<chars[j];
@@ -578,16 +584,295 @@ Automata::MinDFAelem* Automata::init_divideStartOrFinal(){
     return result;
 }
 
+bool Automata::ifSameClass(MinDFAelem a,MinDFAelem b,MinDFAelem* all){
+    //具有转移函数个数不一样时，直接false
+    if(a.hasEdgeNum!=b.hasEdgeNum)
+        return false;
+    //具有转移函数一样时
+    for(int i=0;i<charNum;i++){
+        //全是空，视为相同
+        if(a.minDFA_edges[i].end==-1 && b.minDFA_edges[i].end==-1)
+            continue;
+        //一个为空，视为不同
+        if(a.minDFA_edges[i].end==-1 || b.minDFA_edges[i].end==-1)
+            return false;
+        //两个终点所属类不同返回false
+        if(all[a.minDFA_edges[i].end].minDFA_state!=all[b.minDFA_edges[i].end].minDFA_state)
+            return false;
+    }
+    return true;
+}
 
+int Automata::subSetDivide(MinDFAelem* &all,int size){
+    //当前总的状态类个数
+    int classKind_size=size;
+    /*取出每一个节点与同类节点对比。
+     1.如果这一类只存在这一个元素，则不变。
+     2.如果它与某一类节点中所有元素都相似，加入这类.
+     3.如果它与每一类节点中所有元素都不全相似，新建一个类
+     4.当从头到尾执行一遍不再发生变化时结束收敛*/
+    for(int i=0;i<stateNum;i++){
+        //step1:
+        bool ifOnlyOne=true;
+        for(int j=0;j<stateNum;j++)
+            if(all[i].minDFA_class==all[j].minDFA_class && i!=j)
+                ifOnlyOne=false;
+        if(ifOnlyOne)
+            continue;
+        //step2:
+        bool ifHasSame=false;
+        bool needFresh=false;
+        for(int j=0;j<classKind_size;j++){
+            bool hasSameClass=true;
+            for(int k=0;k<stateNum;k++){
+                if(all[k].minDFA_class==j && i!=k){
+                    //这里是同一类的所有状态
+                    hasSameClass=ifSameClass(all[k],all[i],all);
+                    if(!hasSameClass)
+                        break;
+                }
+            }
+            if(hasSameClass){
+                ifHasSame=true;
+                //当这个类不是本身类时
+                if(j!=all[i].minDFA_class){
+                    needFresh=true;
+                    all[i].minDFA_class=j;
+                }
+                break;
+            }
+        }
+        //step3
+        if(!ifHasSame){
+            all[i].minDFA_class=classKind_size++;
+            needFresh=true;
+        }
+        //step4
+        if(needFresh)
+            i=0;
+    }
+    /*可能存在只有“一个元素“的class，它属于它前面的类。
+     在合并这个类之后可能会存在新的可合并项。
+     解决方法见subSetDivide_confirm()函数。
+     */
+    //过程测试
+    if(showSomeProcess){
+        cout<<endl<<"----------------最小DFA初始化流程2--------------------"<<endl;
+        for(int i=0;i<stateNum;i++){
+            cout<<"状态ID: "<<all[i].minDFA_state<<endl;
+            cout<<"ID类属: "<<all[i].minDFA_class<<endl;
+            cout<<"转移函数数量: "<<all[i].hasEdgeNum<<endl;
+            cout<<"转移函数:"<<endl;
+            for(int j=0;j<charNum;j++){
+                cout<<"条件: "<<chars[j];
+                if(all[i].minDFA_edges[j].end==-1){
+                    cout<<" 不存在"<<endl;
+                }else{
+                    cout<<" 终点:"<<all[i].minDFA_edges[j].end<<"  "<<endl;
+                }
+            }
+            cout<<endl;
+        }
+        cout<<endl<<"--------------------------------------------------"<<endl;
+    }
+    return classKind_size;
+}
 
+bool Automata::subSetDivide_confirm(MinDFAelem* &all,int subSize){
+    if(showSomeProcess){
+        cout<<endl<<"--------------------------------------------"<<endl;
+        cout<<endl<<"-------检查多余项(classHasOnlyOneElem)--------"<<endl;
+        cout<<"---------------如果存在可合并项----------------"<<endl;
+        cout<<"----------将重新进行最小DFA初始化流程2-----------"<<endl;
+        cout<<endl<<"--------------------------------------------"<<endl;
+    }
+    int classKind_size=subSize;
+    //只有一个class时，直接返回结果
+    if(classKind_size==1)
+        return true;
+    int *everyClassHasNumber=new int[classKind_size];
+    for(int i=0;i<classKind_size;i++)
+        everyClassHasNumber[i]=0;
+    for(int i=0;i<stateNum;i++)
+        everyClassHasNumber[all[i].minDFA_class]++;
+    bool ifHasClassOnlyOneElem=false;
+    stack<int>ClassOnlyOneElem;
+     for(int i=0;i<classKind_size;i++)
+         if(everyClassHasNumber[i]==1){
+             ifHasClassOnlyOneElem=true;
+             ClassOnlyOneElem.push(i);
+         }
+    if(!ifHasClassOnlyOneElem){
+        delete []everyClassHasNumber;
+        return true;
+    }
+    //合并相似类
+    while(!ClassOnlyOneElem.empty()){
+        int onlyOneElemClassID=ClassOnlyOneElem.top();
+        ClassOnlyOneElem.pop();
+        //提取出这个class
+        MinDFAelem * thisClass=NULL;
+        for(int i=0;i<stateNum;i++)
+            if(onlyOneElemClassID==all[i].minDFA_class)
+                thisClass=&all[i];
+        //查询是否有相似类，有将其合并并return false
+        for(int i=0;i<stateNum;i++)
+            if(all[i].minDFA_class!=onlyOneElemClassID)
+                if(ifSameClass(all[i],*thisClass,all)){
+                    thisClass->minDFA_class=all[i].minDFA_class;
+                    delete []everyClassHasNumber;
+                    return false;
+                }
+    }
+    delete []everyClassHasNumber;
+    return true;
+}
 
+//判断合并是否完成，完成返回-1，未完成返回classID
+int judgeAllInOne(int *arr,int size){
+    for(int q=0;q<size;q++)
+        if(arr[q]>1)
+            return q;
+    return -1;
+}
 
+void Automata::changeAtoB(int ID_A,int ID_B,MinDFAelem* &all){
+    for(int q=0;q<stateNum;q++)
+        for(int p=0;p<charNum;p++)
+            if(all[q].minDFA_edges[p].end==ID_A)
+                all[q].minDFA_edges[p].end=ID_B;
+}
 
-
-
+void Automata::minDFA_programme(MinDFAelem* &all,int classMaxSize){
+    //最终剩余MinDFAElem个数
+    int LeftMinDFAElemNumber=stateNum;
+    //同一类属的要进行合并
+    int *everyClassHasNumber=new int[classMaxSize];
+    for(int i=0;i<classMaxSize;i++)
+        everyClassHasNumber[i]=0;
+    for(int i=0;i<stateNum;i++)
+        everyClassHasNumber[all[i].minDFA_class]++;
+    int q=judgeAllInOne(everyClassHasNumber,classMaxSize);
+    while(q!=-1){
+        everyClassHasNumber[q]=1;
+        stack<int> classID;
+        for(int i=0;i<stateNum;i++)
+            if(all[i].minDFA_class == q)
+                classID.push(i);
+        int ID_B=classID.top();
+        classID.pop();
+        while(!classID.empty()){
+            int ID_A=classID.top();
+            classID.pop();
+            changeAtoB(ID_A,ID_B,all);
+            all[ID_A].minDFA_state=-1;
+            LeftMinDFAElemNumber--;
+            //如果ID_A是初态，那么ID_B代替A成为初态
+            if(S0==ID_A)
+                S0=ID_B;
+            //如果ID_A为终点集中元素，那么将ID_B也设为添加到终点集，并删除ID_A
+            bool AInFs=false;
+            for(int k=0;k<FsNum;k++)
+                if(Fs[k]==ID_A){
+                    AInFs=true;
+                    Fs[k]=-1;
+                    break;
+                }
+            if(AInFs){
+                //判断B是否在终点集中
+                bool BInFs=false;
+                for(int k=0;k<FsNum;k++)
+                    if(Fs[k]==ID_B){
+                        BInFs=true;
+                        break;
+                    }
+                if(!BInFs)
+                    Fs[FsNum++]=BInFs;
+            }
+        }
+        q=judgeAllInOne(everyClassHasNumber,classMaxSize);
+    }
+    delete []everyClassHasNumber;
+    //测试函数
+    if(showSomeProcess){
+        cout<<endl<<"----------------最小DFA初始化流程3--------------------"<<endl;
+        for(int i=0;i<stateNum;i++){
+            if(all[i].minDFA_state==-1)
+                continue;
+            cout<<"状态ID: "<<all[i].minDFA_state<<endl;
+            cout<<"ID类属: "<<all[i].minDFA_class<<endl;
+            cout<<"转移函数:"<<endl;
+            for(int j=0;j<charNum;j++){
+                cout<<"条件: "<<chars[j];
+                if(all[i].minDFA_edges[j].end==-1){
+                    cout<<" 不存在"<<endl;
+                }else{
+                    cout<<" 终点:"<<all[i].minDFA_edges[j].end<<"  "<<endl;
+                }
+            }
+            cout<<endl;
+        }
+        cout<<endl<<"--------------------------------------------------"<<endl;
+    }
+    //处理状态集
+    //实现状态映射：使状态集从0开始按序分配
+    MinDFAelem * NeedNormalize[LeftMinDFAElemNumber];
+    int *reflect=new int[LeftMinDFAElemNumber];
+    int tempCounter=0;
+    for(int i=0;i<stateNum;i++){
+        if(all[i].minDFA_state==-1)
+            continue;
+        NeedNormalize[tempCounter]=&all[i];
+        reflect[tempCounter++]=all[i].minDFA_state;
+    }
+    stateNum=LeftMinDFAElemNumber;
+    //处理转移函数
+    //NeedNormalize中的minDFA_state对应reflect==minDFA_state时reflect的Index
+    edgeNum=0;
+    for(int i=0;i<LeftMinDFAElemNumber;i++){
+        for(int j=0;j<charNum;j++)
+            if(NeedNormalize[i]->minDFA_edges[j].end!=-1){
+                int endIndex=NeedNormalize[i]->minDFA_edges[j].end;
+                for(int l=0;l<LeftMinDFAElemNumber;l++)
+                    if(reflect[l]==endIndex){
+                        endIndex=l;
+                        break;
+                    }
+                edges[edgeNum].start=i;
+                edges[edgeNum].end=endIndex;
+                edges[edgeNum++].condition=NeedNormalize[i]->minDFA_edges[j].condition;
+            }
+    }
+    //处理初态和终态集
+    for(int i=0;i<LeftMinDFAElemNumber;i++)
+        if(reflect[i]==S0){
+            S0=i;
+            break;
+        }
+    stack<int> newFs;
+    for(int i=0;i<FsNum;i++)
+        if(Fs[i]!=-1)
+            newFs.push(Fs[i]);
+    FsNum=0;
+    while (!newFs.empty()) {
+        int FsElem=newFs.top();
+        newFs.pop();
+        for(int i=0;i<LeftMinDFAElemNumber;i++)
+            if(reflect[i]==FsElem)
+                Fs[FsNum++]=i;
+    }
+    sort(Fs,Fs+FsNum,complare);
+    //输出当前NFA状态到文件 "ResultOfMinDFA_RegularExpression.txt"
+    writeNowState("ResultOfMinDFA_"+RegularExpression+".txt",3);
+}
 
 void Automata::DFAtoMinDFA(){
     MinDFAelem* minDFA=init_divideStartOrFinal();
+    int size=subSetDivide(minDFA,2);
+    while(!subSetDivide_confirm(minDFA,size)){
+        size=subSetDivide(minDFA,size);
+    }
+    minDFA_programme(minDFA,size);
 }
 
 //构造函数和测试函数部分
@@ -605,35 +890,27 @@ Automata::Automata(string RegularExpressionIn){
     NFAtoDFA();
     printNowState(2);
     //执行DFA转换MinDFA
+    DFAtoMinDFA();
+    printNowState(2);
 }
 
-void Automata::testFunction1(){
+void Automata::testFunction(){
     //测试NFA部分
     cout<<endl<<"--------------------执行测试函数--------------------"<<endl;
     cout<<"测试NFA部分:"<<endl;
-    string testString="abc";
+    string testString="(a|b)*ab";
     RegularExpression=testString;
     ScanRegularExpression(testString);
     printNowState(1);
     //测试DFA部分
-    cout<<endl<<"-------------------------------------------------"<<endl;
+    cout<<endl<<"-----------------------------------------"<<endl;
     cout<<endl<<"测试DFA部分"<<endl;
     NFAtoDFA();
     printNowState(2);
     //测试MinDFA部分
-    cout<<endl<<"-------------------------------------------------"<<endl;
+    cout<<endl<<"-------------------------------------------------------"<<endl;
     cout<<endl<<"测试MinDFA部分"<<endl;
     DFAtoMinDFA();
+    printNowState(2);
     cout<<endl<<"--------------------测试函数终止--------------------"<<endl;
 }
-
-
-
-
-
-
-
-
-
-
-

@@ -105,6 +105,7 @@ private:
     struct MinDFAelem{
         int minDFA_state;//当前状态
         Edge *minDFA_edges;//当前状态具有的转移边
+        int hasEdgeNum;//具有的转移函数数量
         int minDFA_class;//属于那一类,初始化时非终态为0，终态为1
     };
     
@@ -114,7 +115,7 @@ public:
     Automata(string RegularExpressionIn);//传入正规式
    
     //测试函数部分
-    void testFunction1();//测试函数,测试正规式(a|b)*到NFA的转换
+    void testFunction();//测试函数,测试正规式(a|b)*到NFA的转换
     
     //正规式转换DFA部分
     void ScanRegularExpression(string newString);//扫描正规式并转换
@@ -130,7 +131,11 @@ public:
     
     //最小化DFA部分
     MinDFAelem* init_divideStartOrFinal();//将转移函数划分为初态和终态两部分
-    
+    bool ifSameClass(MinDFAelem a,MinDFAelem b,MinDFAelem* all);//判断两个MinDFAelem是否同类
+    int subSetDivide(MinDFAelem* &all,int size);//子集划分
+    bool subSetDivide_confirm(MinDFAelem* &all,int subSize);//解决上面自己划分中可能存在独立的重复class
+    void changeAtoB(int ID_A,int ID_B,MinDFAelem* &all);//将状态ID_A更新为ID_B
+    void minDFA_programme(MinDFAelem* &all,int classMaxSize);//将minDFA集重新规划到自动机数据结构上，并输出到文件
     void DFAtoMinDFA();//DFA转换MinDFA流程控制
 };
 
