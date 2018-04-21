@@ -898,7 +898,7 @@ void Automata::testFunction(){
     //测试NFA部分
     cout<<endl<<"--------------------执行测试函数--------------------"<<endl;
     cout<<"测试NFA部分:"<<endl;
-    string testString="(a|b)*ab";
+    string testString="(a|b)";
     RegularExpression=testString;
     ScanRegularExpression(testString);
     printNowState(1);
