@@ -155,6 +155,8 @@ void Automata::ScanRegularExpression(string newString){
         if(newString[i]=='('){
             //'('直接入符号栈
             signals.push('(');
+            if(!elements.empty())
+                signals.push('&');
         }
         else if(newString[i]==')'){
             //运算上一个'('开始到此为止之间的或运算和连接运算
