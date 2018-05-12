@@ -32,14 +32,16 @@ class Automata{
 private:
     //为方便，这里不使用动态分配空间大小，直接分配大小。
     //参数调整统一在这里调整。
-    static const int StateMaxSize=128;//状态集最大数量
+    static const int StateMaxSize=512;//状态集最大数量
     static const int CharsMaxSize=64;//字符集最大数量
-    static const int EdgeMaxSize=128;//转移函数最大数量
+    static const int EdgeMaxSize=512;//转移函数最大数量
     static const char EmptyShift='#';//设置空转移字符
-    static const int EmptyClosureSize=64;//空转移集合最大状态
+    static const int EmptyClosureSize=512;//空转移集合最大状态
     
     //打开/关闭部分状态信息显示
     bool showSomeProcess=false;
+    bool ShowDetails=true;
+    bool ifWriteToFilr=true;
     
     //定义Edge结构体
     struct Edge{
@@ -112,7 +114,7 @@ private:
 public:
     //构造函数部分
     Automata();//无参构造函数，自动初始化
-    Automata(string RegularExpressionIn);//传入正规式
+    Automata(string RegularExpressionIn,bool ShowDetail,bool Write);//传入正规式
    
     //测试函数部分
     void testFunction();//测试函数,测试正规式(a|b)*到NFA的转换
@@ -137,6 +139,22 @@ public:
     void changeAtoB(int ID_A,int ID_B,MinDFAelem* &all);//将状态ID_A更新为ID_B
     void minDFA_programme(MinDFAelem* &all,int classMaxSize);//将minDFA集重新规划到自动机数据结构上，并输出到文件
     void DFAtoMinDFA();//DFA转换MinDFA流程控制
+    
+    //传出MinDFA
+    struct ReturnMinDFA{
+        int itemsNum;
+        struct item{
+            int *start;
+            int *end;
+            char *condition;
+        };
+        item items;
+        int S0;
+        int *Finals;
+        int FinalsNum;
+    };
+    ReturnMinDFA *getResultOfMinDFA();
+    
 };
 
 #endif /* LexicalAnalysis_hpp */

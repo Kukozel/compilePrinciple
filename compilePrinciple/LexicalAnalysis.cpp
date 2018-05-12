@@ -96,11 +96,13 @@ Automata::elem Automata::Closures(elem a,char c){
 }
 
 void Automata::writeNowState(string filename,int Fstate){
-    if(Fstate==1)
+    if(!ifWriteToFilr)
+        return;
+    if(Fstate==1 && ShowDetails)
         cout<<"正规式转化NFA结果将写入文件："<<filename<<endl<<endl;
-    if(Fstate==2)
+    if(Fstate==2 && ShowDetails)
         cout<<"NFA转化DFA结果将写入文件："<<filename<<endl<<endl;
-    if(Fstate==3)
+    if(Fstate==3 && ShowDetails)
         cout<<"最小化DFA结果将写入文件："<<filename<<endl<<endl;
     ofstream SaveFile(filename);
     if(!SaveFile.is_open()){
@@ -152,13 +154,36 @@ void Automata::ScanRegularExpression(string newString){
     stringLength+=2;
     //处理正规式
     for(int i=0;i<stringLength;i++){
+        //'('直接入符号栈
         if(newString[i]=='('){
-            //'('直接入符号栈
+            if(i>1)
+                if(newString[i-1]!='(')
+                    signals.push('&');
             signals.push('(');
-            if(!elements.empty())
-                signals.push('&');
-        }
-        else if(newString[i]==')'){
+        }else if (newString[i]=='*')//闭包运算优先级最高，直接运算
+        {
+            if(elements.empty()){
+                cout<<"正规式存在错误!(闭包运算时，数据栈为空!)"<<endl;
+                exit(-1);
+            }
+            elem topElem=elements.top();
+            elements.pop();
+            elements.push(Closures(topElem,EmptyShift));
+        }else if(newString[i]=='|'){
+            while (signals.top()=='&') {
+                if(elements.size()<2){
+                    cout<<"正规式存在错误!(数据栈元素少于二元运算需求!)-3"<<endl;
+                    exit(-1);
+                }
+                elem temp1=elements.top();
+                elements.pop();
+                elem temp2=elements.top();
+                elements.pop();
+                elements.push(Join(temp2, temp1, EmptyShift));
+                signals.pop();
+            }
+            signals.push('|');
+        }else if(newString[i]==')'){
             //运算上一个'('开始到此为止之间的或运算和连接运算
             //先处理连接运算
             while (signals.top()=='&') {
@@ -191,47 +216,13 @@ void Automata::ScanRegularExpression(string newString){
                 cout<<"正规式存在错误!(括号运算闭合失败!)"<<endl;
                 exit(-1);
             }else{
-               signals.pop();
-            }
-        }
-        else if(newString[i]=='|'){
-            //运算上一个'('之前的连接运算，并将'|'压入符号栈
-            if(elements.empty()){
-                cout<<"正规式存在错误!(或运算时，数据栈为空!)"<<endl;
-                exit(-1);
-            }
-            while (signals.top()=='&') {
-                if(elements.size()<2){
-                    cout<<"正规式存在错误!(数据栈元素少于二元运算需求!)-3"<<endl;
-                    exit(-1);
-                }
-                elem temp1=elements.top();
-                elements.pop();
-                elem temp2=elements.top();
-                elements.pop();
-                elements.push(Join(temp2, temp1, EmptyShift));
                 signals.pop();
             }
-            signals.push('|');
-        }
-        else if(newString[i]=='*'){
-            //闭包运算优先级最高，直接运算
-            if(elements.empty()){
-                cout<<"正规式存在错误!(闭包运算时，数据栈为空!)"<<endl;
-                exit(-1);
-            }
-            elem topElem=elements.top();
-            elements.pop();
-            elements.push(Closures(topElem,EmptyShift));
-            //改错:闭包运算后需压栈'&'
-            if(i!=stringLength-1)//不是结尾元素
-                if(newString[i+1]!='(' && newString[i+1]!=')' && newString[i+1]!='|' && newString[i+1]!='*')//下一个不是运算符号
-                    signals.push('&');
         }else{
             //不是运算符号时，视为连接，数据直接推入数据栈，并添加运算符号'&'入符号栈
             elements.push(single(newString[i]));
-            if(i!=stringLength-1)//不是结尾元素
-                if(newString[i+1]!='(' && newString[i+1]!=')' && newString[i+1]!='|' && newString[i+1]!='*')//下一个不是运算符号
+            if(i!=0)//不是初始元素
+                if(newString[i-1]!='(' && newString[i-1]!='|')//前一个是数据类型
                     signals.push('&');
             //检查定义字符集是否包含
             bool charExist=false;
@@ -243,6 +234,7 @@ void Automata::ScanRegularExpression(string newString){
                 chars[charNum++]=newString[i];
         }
     }
+    
     //处理状态集
     stateNum=stateID;
     for(int i=0;i<stateNum;i++)
@@ -877,23 +869,53 @@ void Automata::DFAtoMinDFA(){
     minDFA_programme(minDFA,size);
 }
 
+//传出MinDFA
+Automata::ReturnMinDFA *Automata::getResultOfMinDFA(){
+    ReturnMinDFA *result=new ReturnMinDFA;
+    result->itemsNum=edgeNum;
+    result->items.start=new int[edgeNum];
+    result->items.end=new int[edgeNum];
+    result->items.condition=new char[edgeNum];
+    for(int i=0;i<edgeNum;i++){
+        result->items.start[i]=edges[i].start;
+        result->items.end[i]=edges[i].end;
+        result->items.condition[i]=edges[i].condition;
+    }
+    result->S0=S0;
+    result->Finals=new int[FsNum];
+    result->FinalsNum=FsNum;
+    for(int i=0;i<FsNum;i++)
+        result->Finals[i]=Fs[i];
+    return result;
+}
+
 //构造函数和测试函数部分
 
 Automata::Automata(){
     cout<<"已调用Automata无参构造函数..."<<endl;
 }
 
-Automata::Automata(string RegularExpressionIn){
+Automata::Automata(string RegularExpressionIn,bool ShowDetail,bool Write){
+    ShowDetails=ShowDetail;
+    ifWriteToFilr=Write;
     //执行正规式转换NFA
     RegularExpression=RegularExpressionIn;
     ScanRegularExpression(RegularExpression);
-    printNowState(1);
+    if(ShowDetail)
+        printNowState(1);
     //执行NFA转换DFA
     NFAtoDFA();
-    printNowState(2);
+    if(ShowDetail)
+        printNowState(2);
     //执行DFA转换MinDFA
     DFAtoMinDFA();
-    printNowState(2);
+    if(ShowDetail)
+        printNowState(2);
+    if(!ShowDetail){
+        string s(RegularExpressionIn,0,1000);
+        cout<<"正规式:"<<s;
+        cout<<"转换minDFA成功!"<<endl;
+    }
 }
 
 void Automata::testFunction(){
