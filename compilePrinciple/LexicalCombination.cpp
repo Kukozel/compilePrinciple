@@ -396,6 +396,7 @@ void SignStream::printOrWriteResult(bool ifPrint,bool ifWrite){
         SaveFile<<"------------------------------------------"<<endl;
         SaveFile<<"记号流形式为(类型号,内容). "<<endl;
         SaveFile<<"eg.(0,int) 表示：关键词 int"<<endl;
+        SaveFile<<"目标文本为:"<<*targetString<<endl;
         SaveFile<<"生成记号流个数: "<<number<<endl;
         SaveFile<<"------------------------------------------"<<endl;
         SaveFile<<"记号流: "<<endl;
