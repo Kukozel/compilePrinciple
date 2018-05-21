@@ -5,6 +5,8 @@
 >- LexicalAnalysis.cpp 为对应头文件程序的具体实现。包含详细注释。
 >- LexicalCombination.hpp 为头文件。词法分析part2部分的程序的声明，实现应用最小DFA处理文本，生成记号流。包含详细注释。
 >- LexicalCombination.cpp 为对应头文件程序的具体实现。包含详细注释。
+>-HandleFiles.hpp为头文件。实现读取文件的操作。包含详细注释。
+>-HandleFiles.cpp 为对应头文件程序的具体实现。包含详细注释。
 
 ##LexicalAnalysis模块说明
 ###基本信息说明
@@ -42,3 +44,7 @@
 
 ###输出文件说明
 >- 程序执行成功后，记号流说明及记号流输出到当前文件夹"ResultOfSignStream_XX"文件中。XX为生成记号流数量。
+
+##LexicalAnalysis模块说明
+###基本信息说明
+>- 函数 string readFileIntoString(string filename) 接收string形式的文件名，并将文件内容以string形式读出。

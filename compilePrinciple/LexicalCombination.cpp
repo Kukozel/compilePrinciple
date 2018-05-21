@@ -418,7 +418,7 @@ void SignStream::init_othersSignal(){
         cout<<"标识符初始化成功! 数量:"<<identifierSignal->itemsNum<<endl;
     
     //* & | ( )五个符号冲突 依次替换为 a b c d e
-    string operateFormula="+|++|-|--|=|a|/|%|<|>|b|c|d|e";
+    string operateFormula="+|++|-|--|=|a|/|%|<|>|b|c|d|e|{|}";
     init_operateSignal(operateFormula);
     solveOperateFormulaCrash();
     if(printProcess)

@@ -10,7 +10,7 @@
 #define LexicalCombination_hpp
 
 #include <stdio.h>
-#include <string.h>
+#include <string>
 #include "LexicalAnalysis.hpp"
 using namespace std;
 
