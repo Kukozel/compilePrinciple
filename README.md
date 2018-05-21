@@ -45,6 +45,6 @@
 ###输出文件说明
 >- 程序执行成功后，记号流说明及记号流输出到当前文件夹"ResultOfSignStream_XX"文件中。XX为生成记号流数量。
 
-##LexicalAnalysis模块说明
+##HandleFiles模块说明
 ###基本信息说明
 >- 函数 string readFileIntoString(string filename) 接收string形式的文件名，并将文件内容以string形式读出。
