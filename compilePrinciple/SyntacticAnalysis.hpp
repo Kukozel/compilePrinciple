@@ -38,7 +38,9 @@ private:
     static const int derivativeSet_MaxSize=42;//推导式集合最大个数
     static const char derivative_empty='#';//空条件符号
     static const char derivative_join='>';//输入推导式连接符号
+    static const char derivative_or='|';//输入推导式或符号
     static const char derivative_carve='$';//输入推导式终止符号
+    
     
     //定义终结符,非终结符，终结符地址池，开始符，及相关变量
     char *terminalSignals=NULL;//终结符集
@@ -53,23 +55,28 @@ private:
     struct derivative{
         char LeftUnterminalSignal;//推导式左侧非终结符
         string signalsSetUnit[signalsSetUnit_MaxSize];//推导式右侧推导式集单元
-        int signalsSetUnit_size;//推导式右侧推导式集单元个数
+        int signalsSetUnit_size=0;//推导式右侧推导式集单元个数
     };
     
     derivative derivativeSet[derivativeSet_MaxSize];//推导式集合
     int derivativeSet_size=0;//推导式集合大小
     
 public:
+    //打开/关闭过程显示
+    bool printProcess=true;
+    bool showDetails=true;
+    
     //构造函数部分
     SyntacticTree();//无参构造函数，自动初始化
-    SyntacticTree(string RegularExpressionIn);
+    SyntacticTree(string SourceFile);
     
     //测试函数部分
     void testFunction();//测试函数
+    void printDerivativeSet();
     
     //基本信息处理部分
     void init_Signals();//基本变量初始化
-    void inputHandle(string inputStr);//输入处理
+    void inputHandle(string const &inputStr);//输入处理
     void removeFromUnterminalSignalFromPool(char c);//从非终结符池中移除一个非终结符
     char getUnterminalSignalFromPool();//从非终结符池中获取一个非终结符
     bool isATerminalSignal(char c);//判断是否是一个终结符

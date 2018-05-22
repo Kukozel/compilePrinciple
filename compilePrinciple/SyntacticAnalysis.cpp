@@ -7,6 +7,10 @@
 //
 
 #include "SyntacticAnalysis.hpp"
+#include "HandleFiles.hpp"
+
+//定义显示状态时的分割横线
+string carveUpLine="-------------------------------------------";
 
 //基本信息处理部分
 void SyntacticTree::init_Signals(){
@@ -25,23 +29,47 @@ void SyntacticTree::init_Signals(){
             terminalSignals[terminalSignals_size++]=terminalSignals_add[i];
 }
 
-void SyntacticTree::inputHandle(string inputStr){
-    //TODO::对输入字符串进行处理
+void SyntacticTree::inputHandle(string const &inputStr){
+    //对输入字符串进行处理
+    int length=(int)inputStr.length();
+    for(int i=0;i<length;i++){
+        if(inputStr[i]==derivative_carve)
+            i++;
+        //处理推导式左端
+        if(!isAnUnterminalSignal(inputStr[i])){
+            cerr<<"推导式错误！ @推导式左端应为非终结符！"<<endl;
+            exit(-1);
+        }
+        derivativeSet[derivativeSet_size].LeftUnterminalSignal=inputStr[i];
+        //移除非终结符
+        removeFromUnterminalSignalFromPool(inputStr[i++]);
+        //判断推导式符号
+        if(inputStr[i++]!=derivative_join){
+            cerr<<"推导式错误！ @\'>\'"<<endl;
+            exit(-1);
+        }
+        //处理推导式右端
+        while(inputStr[i]!=derivative_carve){
+            string temp(inputStr,i++,1);
+            while(inputStr[i]!=derivative_or && inputStr[i]!=derivative_carve)
+                temp+=inputStr[i++];
+            derivativeSet[derivativeSet_size].signalsSetUnit[derivativeSet[derivativeSet_size].signalsSetUnit_size++]=temp;
+            if(inputStr[i]==derivative_or)
+                i++;
+        }
+        derivativeSet_size++;
+    }
 }
 
 void SyntacticTree::removeFromUnterminalSignalFromPool(char c){
-    bool unterminalSignals_error=true;
-    for(int i=0;i<unterminalSignalsPool_MaxSize;i++)
+    for(int i=0;i<unterminalSignals_size;i++)
         if(unterminalSignals[i]==c){
-            unterminalSignals[i]='#';
+            if(printProcess)
+                cout<<"移除非终结符:"<<unterminalSignals[i]<<" 非终结符池剩余符号数量:"<<unterminalSignalsPool_size-1<<endl;
+            unterminalSignalsPool[i]='#';
             unterminalSignalsPool_size--;
-            unterminalSignals_error=false;
             break;
         }
-    if(unterminalSignals_error){
-        cerr<<"推导式格式存在错误!重复使用非终结符！"<<endl;
-        exit(-1);
-    }
 }
 
 char SyntacticTree::getUnterminalSignalFromPool(){
@@ -50,10 +78,10 @@ char SyntacticTree::getUnterminalSignalFromPool(){
         exit(-1);
     }
     char result = '\0';
-    for(int i=0;i<unterminalSignalsPool_MaxSize;i++)
+    for(int i=0;i<unterminalSignals_size;i++)
         if(unterminalSignalsPool[i]!='#'){
             result=unterminalSignalsPool[i];
-            unterminalSignalsPool[i]='#';;
+            unterminalSignalsPool[i]='#';
             break;
         }
     unterminalSignalsPool_size--;
@@ -107,6 +135,8 @@ void SyntacticTree::ReomveLeftRecursion_single(int index){
     }
     //消除左递归流程
     char LeftRecursionUnit_duplicate=getUnterminalSignalFromPool();
+    if(printProcess)
+        cout<<"获取到非终结符:"<<LeftRecursionUnit_duplicate<<endl;
     derivativeSet[derivativeSet_size].LeftUnterminalSignal=LeftRecursionUnit_duplicate;
     derivativeSet[derivativeSet_size].signalsSetUnit_size=0;
     while (!LeftRecursionUnit.empty()) {
@@ -141,8 +171,8 @@ void SyntacticTree::ReomveLeftRecursion_all(){
 
 //提取左因子
 char SyntacticTree::ifHasleftFactor(){
-    char a='a';
-    return a;
+    
+    return '\0';
 }
 
 void SyntacticTree::leftFactorExtract_single(int index){
@@ -153,17 +183,44 @@ void SyntacticTree::leftFactorExtract_all(){
     
 }
 
-//构造函数
-SyntacticTree::SyntacticTree(){
-    init_Signals();
+//测试函数部分
+void SyntacticTree::printDerivativeSet(){
+    cout<<carveUpLine<<endl<<"当前推导式集合情况："<<endl;
+    cout<<"推导式个数为："<<derivativeSet_size<<endl;
+    cout<<"推导式内容为："<<endl;
+    for(int i=0;i<derivativeSet_size;i++){
+        cout<<derivativeSet[i].LeftUnterminalSignal<<derivative_join;
+        int jMax=derivativeSet[i].signalsSetUnit_size;
+        for(int j=0;j<jMax;j++){
+            cout<<derivativeSet[i].signalsSetUnit[j];
+            if(j<jMax-1)
+                cout<<derivative_or;
+        }
+        cout<<endl;
+    }
+    cout<<carveUpLine<<endl;
 }
 
-SyntacticTree::SyntacticTree(string RegularExpressionIn){
+//构造函数
+
+SyntacticTree::SyntacticTree(string SourceFile){
+    //处理传入字符串
+    handleFile *readfile=new handleFile;
+    string RegularExpressionIn=readfile->readFileIntoString_forSyntactic(SourceFile);
+    if(RegularExpressionIn.length()<2){
+        cerr<<"传入推导式存在错误!"<<endl;
+        exit(-1);
+    }
     //初始化
-    SyntacticTree();
+    init_Signals();
+    cout<<carveUpLine<<endl<<"传入推导式为:"<<endl<<RegularExpressionIn<<endl<<carveUpLine<<endl;
     inputHandle(RegularExpressionIn);
+    if(printProcess)
+        printDerivativeSet();
     //消除左递归
     ReomveLeftRecursion_all();
+    if(printProcess)
+        printDerivativeSet();
     //提取左因子
     leftFactorExtract_all();
 }

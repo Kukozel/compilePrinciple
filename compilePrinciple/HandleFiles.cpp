@@ -11,7 +11,7 @@
 #include <sstream>
 #include <iostream>
 
-std::string handleFile::readFileIntoString(std::string filename)
+std::string handleFile::readFileIntoString_forLexical(std::string filename)
 {
     std::ifstream ifile(filename);
     std::ostringstream buf;
@@ -24,6 +24,17 @@ std::string handleFile::readFileIntoString(std::string filename)
     return buf.str();
 }
 
+std::string handleFile::readFileIntoString_forSyntactic(string filename){
+    std::ifstream ifile(filename);
+    std::ostringstream buf;
+    char ch;
+    while(buf&&ifile.get(ch)){
+        if(ch=='\n'||ch=='\t'||ch==' ')
+            continue;
+        buf.put(ch);
+    }
+    return buf.str();
+}
 
 
 

@@ -16,7 +16,8 @@ using namespace std;
 class handleFile{
     
 public:
-    string readFileIntoString(string filename);
+    string readFileIntoString_forLexical(string filename);
+    string readFileIntoString_forSyntactic(string filename);
 };
 
 #endif /* HandleFiles_hpp */
