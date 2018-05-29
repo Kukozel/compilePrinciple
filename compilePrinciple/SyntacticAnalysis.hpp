@@ -9,26 +9,21 @@
 #ifndef SyntacticAnalysis_hpp
 #define SyntacticAnalysis_hpp
 
-#include <stdio.h>
-#include <stdio.h>
+#include <iostream>
 #include <stack>
 #include <string>
-#include <fstream>
-#include <iostream>
+
 
 using namespace std;
 
-/*TODO：
- 实现：
- 1.消除左递归
- 2.提取左因子
- 要求：
- 1.暂无
- */
+//基本数据情况
+class BaseData{
 
-//定义语法分析数据结构
-class SyntacticTree{
-private:
+public:
+    //显示过程，显示打印，输出打印
+    bool printProcess=true;
+    bool showDetails=false;
+    bool printOut=false;
     //手动设置变量
     static const int terminalSignals_MaxSize=42;//终结符最大数量，默认含有a-z
     string terminalSignals_add=".()*";//补充的终结符集合
@@ -40,7 +35,6 @@ private:
     static const char derivative_join='>';//输入推导式连接符号
     static const char derivative_or='|';//输入推导式或符号
     static const char derivative_carve='$';//输入推导式终止符号
-    
     
     //定义终结符,非终结符，终结符地址池，开始符，及相关变量
     char *terminalSignals=NULL;//终结符集
@@ -61,19 +55,6 @@ private:
     derivative derivativeSet[derivativeSet_MaxSize];//推导式集合
     int derivativeSet_size=0;//推导式集合大小
     
-public:
-    //打开/关闭过程显示
-    bool printProcess=true;
-    bool showDetails=true;
-    
-    //构造函数部分
-    SyntacticTree();//无参构造函数，自动初始化
-    SyntacticTree(string SourceFile);
-    
-    //测试函数部分
-    void testFunction();//测试函数
-    void printDerivativeSet();
-    
     //基本信息处理部分
     void init_Signals();//基本变量初始化
     void inputHandle(string const &inputStr);//输入处理
@@ -82,14 +63,48 @@ public:
     bool isATerminalSignal(char c);//判断是否是一个终结符
     bool isAnUnterminalSignal(char c);//判断是否是一个非终结符
     
+    //测试函数部分
+    void printDerivativeSet();
+    
+    //构造函数
+    BaseData(string& SourceFile);
+};
+
+//消除左递归及提取左因子
+class DataPreprocessing{
+private:
+    BaseData *baseData=nullptr;
+    string *maxLeftFator=nullptr;
+    int maxLeftFator_size=-1;
+public:
+    //构造函数
+    DataPreprocessing(BaseData* baseData);
+    
     //消除左递归部分
-    void ReomveLeftRecursion_single(int index);//消除左递归子函数
+    void ReomveLeftRecursion_single(const int index);//消除左递归子函数
     void ReomveLeftRecursion_all();//消除左递归总体
     
     //提取左因子部分
-    char ifHasleftFactor();//是否含有左因子，有返回左因子，没有返回空条件符号
-    void leftFactorExtract_single(int index);//提取左因子子函数
+    bool FindMaxLeftFator(const int index);//是否含有左因子，没有返回false，有返回true并完成最长左因子
+    bool leftFactorExtract_single(int index);//提取左因子子函数
     void leftFactorExtract_all();//提取左因子总体
 };
+
+
+
+//定义语法分析数据结构
+class SyntacticTree{
+private:
+    BaseData *baseData;
+    void processRawData();//包括读取数据，消除左递归，提取左因子
+    
+public:
+    
+    //构造函数部分
+    SyntacticTree(string SourceFile);
+    
+};
+ 
+ 
 
 #endif /* SyntacticAnalysis_hpp */
