@@ -262,16 +262,16 @@ bool DataPreprocessing::leftFactorExtract_single(int index){
     if(baseData->printProcess)
         cout<<"获取到非终结符:"<<LeftRecursionUnit_duplicate<<endl;
     baseData->derivativeSet[baseData->derivativeSet_size].LeftUnterminalSignal=LeftRecursionUnit_duplicate;
-    baseData->derivativeSet[baseData->derivativeSet_size].signalsSetUnit_size=1;
-    baseData->derivativeSet[baseData->derivativeSet_size].signalsSetUnit[0]=tempStr;
-    baseData->derivativeSet_size++;
+    baseData->derivativeSet[baseData->derivativeSet_size].signalsSetUnit_size=0;
     //修改原推导式
     stack<string> newItems;
     for (int i=0; i<length; i++) {
         newItems.push(derivative_aim->signalsSetUnit[i]);
     }
-    bool hasNullUnit=false;
+    bool hasNullUnit=false;     //为了方便把空集符号放在最后，并且能去掉重复的空集符号
+    bool hasSameLenth=false;
     derivative_aim->signalsSetUnit_size=0;
+    derivative_aim->signalsSetUnit[derivative_aim->signalsSetUnit_size++]=(tempStr+LeftRecursionUnit_duplicate); //原推导式第一项(合并项)
     while (!newItems.empty()) {
         string a(newItems.top());
         newItems.pop();
@@ -293,14 +293,17 @@ bool DataPreprocessing::leftFactorExtract_single(int index){
         }
         //前缀相同
         if(a.length()==maxLeftFator_size){
-            hasNullUnit=true;
+            hasSameLenth=true;
             continue;
         }
         string c(a,maxLeftFator_size);
-        derivative_aim->signalsSetUnit[derivative_aim->signalsSetUnit_size++]=(LeftRecursionUnit_duplicate+c);
+        baseData->derivativeSet[baseData->derivativeSet_size].signalsSetUnit[baseData->derivativeSet[baseData->derivativeSet_size].signalsSetUnit_size++]=c;
     }
     if (hasNullUnit)    //空转移存在情况下
-        derivative_aim->signalsSetUnit[derivative_aim->signalsSetUnit_size++]=LeftRecursionUnit_duplicate;
+        derivative_aim->signalsSetUnit[derivative_aim->signalsSetUnit_size++]=baseData->derivative_empty;
+    if(hasSameLenth)
+        baseData->derivativeSet[baseData->derivativeSet_size].signalsSetUnit[baseData->derivativeSet[baseData->derivativeSet_size].signalsSetUnit_size++]=baseData->derivative_empty;
+    baseData->derivativeSet_size++;
     return true;
 }
 
