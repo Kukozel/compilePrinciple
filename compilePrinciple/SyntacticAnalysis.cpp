@@ -27,6 +27,7 @@ void BaseData::init_Signals(){
     if(terminalSignals_add.length()>0)
         for(int i=0;i<terminalSignals_add.length();i++)
             terminalSignals[terminalSignals_size++]=terminalSignals_add[i];
+    startSignalIndex=0;//默认第一个是开始符
 }
 
 void BaseData::inputHandle(string const &inputStr){
@@ -324,6 +325,288 @@ DataPreprocessing::DataPreprocessing(BaseData* baseData):baseData(baseData){
     }
 }
 
+
+//通用函数
+bool FirstAndFllow::IfTwoStringsHaveSameElem(const string& a,const string& b){
+    unsigned long aLen=a.length();
+    unsigned long bLen=b.length();
+    for (int i=0; i<aLen; i++) {
+        char aChar=a[i];
+        for (int j=0; j<bLen; j++)
+            if(aChar==b[j])
+                return true;
+    }
+    return false;
+}
+
+void FirstAndFllow::initFirstAndFllowSet(){
+    int SetSize=baseData->derivativeSet_size;
+    F_size=SetSize;
+    FirstSet=new FirstStruct[SetSize];
+    FllowSet=new FllowStruct[SetSize];
+    for (int i=0; i<SetSize; i++) {
+        //First
+        FirstSet[i].cID=baseData->derivativeSet[i].LeftUnterminalSignal;
+        FirstSet[i].setElems="";
+        FirstSet[i].hasNull=false;
+        
+        //Fllow
+        FllowSet[i].cID=baseData->derivativeSet[i].LeftUnterminalSignal;
+        FllowSet[i].setElems="";
+    }
+    if (baseData->printProcess)
+        cout<<carveUpLine<<endl<<"FirstFllow初始化完成!"<<endl<<carveUpLine<<endl;
+}
+
+int FirstAndFllow::FindIndexByLeftCharInSets(char c){
+    if(FirstSet==nullptr || FllowSet==nullptr){
+        cerr<<"空指针错误!(@FindIndexByLeftCharInSets Function!)"<<endl;
+        exit(-1);
+    }
+    for (int i=0; i<F_size; i++)
+        if(FirstSet[i].cID==c)
+            return i;
+    cerr<<"查找错误!(@FindIndexByLeftCharInSets Function!)"<<endl;
+    exit(-1);
+}
+
+void FirstAndFllow::printSetState(int id){
+    if(id!=0 && id !=1){
+        cerr<<"打印First/Fllow集错误!"<<endl;
+        exit(-1);
+    }
+    if(id==0)
+        cout<<"First集状态:"<<endl;
+    else
+        cout<<"Fllow集状态:"<<endl;
+    for (int i=0; i<baseData->derivativeSet_size; i++) {
+        if(id==0){
+            cout<<FirstSet[i].cID<<":"<<FirstSet[i].setElems;
+            if(FirstSet[i].hasNull)
+                cout<<baseData->derivative_empty;
+            cout<<endl;
+        }
+        else{
+            cout<<FllowSet[i].cID<<":"<<FllowSet[i].setElems;
+            cout<<endl;
+        }
+    }
+}
+
+//First集
+bool FirstAndFllow::ifFirstSetRein(int index){
+    bool rein=false;
+    if(FirstSet[index].setElems.length()>0)
+        rein=true;
+    if (FirstSet[index].hasNull)
+        rein=true;
+    return rein;
+}
+
+string FirstAndFllow::mergeString(string a,string b){
+    unsigned long LenA=a.length();
+    for (int i=0; i<b.length(); i++) {
+        bool hasTheChar=false;
+        for (int j=0; j<LenA; j++) {
+            if(b[i]==a[j]){
+                hasTheChar=true;
+                break;
+            }
+        }
+        if(hasTheChar)
+            continue;
+        a+=b[i];
+    }
+    return a;
+}
+
+string FirstAndFllow::mergeString(string a,char b){
+    bool hasTheChar=false;
+    for (int i=0; i<a.length(); i++) {
+        if(a[i]==b){
+            hasTheChar=true;
+            break;
+        }
+    }
+    if(!hasTheChar)
+        a+=b;
+    return a;
+}
+
+void FirstAndFllow::calFirst(){
+    queue<BaseData::derivative> UnReinSet;
+    //第一次遍历寻找直接收敛的非终结符
+    for (int i=0; i<baseData->derivativeSet_size; i++) {
+        BaseData::derivative temp=baseData->derivativeSet[i];
+        //不收敛收入Quene
+        bool IfRein=true;
+        bool IfHasNullUnion=false;
+        string tempString="";
+        for(int j=0;j<temp.signalsSetUnit_size;j++){
+            char tempChar=temp.signalsSetUnit[j][0];
+            if (baseData->isAnUnterminalSignal(tempChar)){//非终结符号开头
+                IfRein=false;
+                break;
+            }
+            if(tempChar==baseData->derivative_empty){//存在空转移
+                IfHasNullUnion=true;
+                continue;
+            }
+            tempString=mergeString(tempString,tempChar);
+        }
+        if(!IfRein){
+            UnReinSet.push(temp);
+            continue;
+        }
+        //收敛写入数据体
+        int Lchar_index=FindIndexByLeftCharInSets(temp.LeftUnterminalSignal);
+        FirstSet[Lchar_index].setElems=tempString;
+        if(IfHasNullUnion)
+            FirstSet[Lchar_index].hasNull=true;
+    }
+    //循环遍历直至全部收敛
+    while(!UnReinSet.empty()){
+        BaseData::derivative temp=UnReinSet.front();
+        string tempString="";
+        bool hasNullUnion=false;
+        bool setNotRein=false;
+        for (int i=0; i<temp.signalsSetUnit_size; i++) {
+            char tempChar=temp.signalsSetUnit[i][0];
+            if(baseData->isATerminalSignal(tempChar)){//是终结符
+                tempString=mergeString(tempString,tempChar);
+                continue;
+            }
+            if(tempChar==baseData->derivative_empty){
+                hasNullUnion=true;
+                continue;
+            }
+            //非终结符开头
+            setNotRein=false;
+            for(int j=0;j<temp.signalsSetUnit[i].length();j++){
+                tempChar=temp.signalsSetUnit[i][j];
+                int index=FindIndexByLeftCharInSets(tempChar);
+                if(ifFirstSetRein(index) && temp.LeftUnterminalSignal!=tempChar){
+                    tempString=mergeString(tempString,FirstSet[index].setElems);
+                }else{//不收敛
+                    setNotRein=true;
+                    break;
+                }
+                if(FirstSet[index].hasNull){//存在空
+                    if(j==temp.signalsSetUnit[i].length()-1){
+                        hasNullUnion=true;
+                        break;
+                    }
+                    char t=temp.signalsSetUnit[i][j+1];
+                    if(baseData->isATerminalSignal(t)){
+                        tempString=mergeString(tempString,t);
+                        break;
+                    }
+                }else
+                    break;
+            }
+            if(setNotRein)
+                break;
+        }//结束闭合所有单元的循环
+        if(setNotRein){
+            UnReinSet.pop();
+            UnReinSet.push(temp);
+        }else{
+            int Lchar_index=FindIndexByLeftCharInSets(temp.LeftUnterminalSignal);
+            FirstSet[Lchar_index].setElems=tempString;
+            if(hasNullUnion)
+                FirstSet[Lchar_index].hasNull=true;
+            UnReinSet.pop();
+        }
+    }
+    if (baseData->printProcess)
+        cout<<carveUpLine<<endl<<"First集计算完成!"<<endl<<carveUpLine<<endl;
+}
+
+//Fllow集
+string FirstAndFllow::getFirst(const string& aim){
+    unsigned long len=aim.length();
+    string result="";
+    for (int i=0; i<len; i++) {
+        char t=aim[i];
+        if(baseData->isATerminalSignal(t)){//终结符
+            result=mergeString(result, t);
+            break;
+        }
+        int Char_index=FindIndexByLeftCharInSets(t);
+        result=mergeString(result,FirstSet[Char_index].setElems);
+        if(!FirstSet[Char_index].hasNull)
+            break;
+    }
+    return result;
+}
+
+void FirstAndFllow::initTransSet(){
+    for (int i=0; i<baseData->derivativeSet_size; i++) {
+        BaseData::derivative tempDerivative=baseData->derivativeSet[i];
+        char char_src=tempDerivative.LeftUnterminalSignal;
+        for (int j=0; j<tempDerivative.signalsSetUnit_size; j++) {
+            string tempString(tempDerivative.signalsSetUnit[j]);
+            for (int k=(int)tempString.length()-1; k>=0; k--) {
+                if (baseData->isAnUnterminalSignal(tempString[k])) {
+                    FllowTrans tempFllowTrans;
+                    tempFllowTrans.src=char_src;
+                    tempFllowTrans.dst=tempString[k];
+                    TransSet.push(tempFllowTrans);
+                    //判断最后一个是否为含空
+                    int lastindex=FindIndexByLeftCharInSets(tempString[k]);
+                    if(!FirstSet[lastindex].hasNull)
+                        break;
+                }else
+                    break;
+            }
+        }
+    }
+}
+
+void FirstAndFllow::calFllow(){
+    //条件1
+    FllowSet[baseData->startSignalIndex].setElems="$";
+    //条件2
+    for(int i=0;i<baseData->derivativeSet_size;i++){
+        BaseData::derivative tempDerivative=baseData->derivativeSet[i];
+        for(int j=0;j<tempDerivative.signalsSetUnit_size;j++){
+            string tempString(tempDerivative.signalsSetUnit[j]);
+            for(int k=0;k<tempString.length()-1;k++){
+                if(baseData->isAnUnterminalSignal(tempString[k])){//非结尾元素为非终结符
+                    string left(tempString,k+1);
+                    string s=getFirst(left);
+                    int stateIndex=FindIndexByLeftCharInSets(tempString[k]);
+                    FllowSet[stateIndex].setElems=mergeString(FllowSet[stateIndex].setElems, s);
+                }
+            }
+        }
+    }
+    //条件3
+    initTransSet();
+    for (int i=0; i<TransSet.size(); i++) {
+        FllowTrans tempFllowTran=TransSet.front();
+        int t1=FindIndexByLeftCharInSets(tempFllowTran.dst);
+        int t2=FindIndexByLeftCharInSets(tempFllowTran.src);
+        int first=(int)FllowSet[t1].setElems.length();
+        FllowSet[t1].setElems=mergeString(FllowSet[t1].setElems, FllowSet[t2].setElems);
+        int then=(int)FllowSet[t1].setElems.length();
+        if(first!=then)
+            i=0;
+        TransSet.pop();
+        TransSet.push(tempFllowTran);
+    }
+}
+
+//构造函数
+FirstAndFllow::FirstAndFllow(BaseData* baseData):baseData(baseData){
+    if(baseData==nullptr){
+        cerr<<"传入数据指针错误!"<<endl;
+        exit(-1);
+    }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////
 void SyntacticTree::processRawData(){
     //消除左递归
     DataPreprocessing* dataPreprocessing=new DataPreprocessing(baseData);
@@ -347,14 +630,32 @@ void SyntacticTree::processRawData(){
     }
 }
 
+void SyntacticTree::calFirstAndFllow(){
+    //初始化
+    FirstAndFllow *FF=new FirstAndFllow(baseData);
+    FF->initFirstAndFllowSet();
+    //求First集
+    FF->calFirst();
+    //求Fllow集
+    FF->calFllow();
+    if(baseData->showDetails){
+        cout<<carveUpLine<<endl<<"执行First集与Fllow集运算ing..."<<endl;
+        FF->printSetState(0);
+        FF->printSetState(1);
+        cout<<carveUpLine<<endl;
+    }
+}
+
 SyntacticTree::SyntacticTree(string SourceFile){
     //初始化基本数据
     baseData=new BaseData(SourceFile);
     //读取数据，消除左递归，提取左因子
-    processRawData();
+    //processRawData();
+    //计算First集和Fllow集
+    calFirstAndFllow();
+    //构造LL(1)预测分析表
+    
 }
-
- 
 
 
 

@@ -12,6 +12,7 @@
 #include <iostream>
 #include <stack>
 #include <string>
+#include<queue>
 
 
 using namespace std;
@@ -21,8 +22,8 @@ class BaseData{
 
 public:
     //显示过程，显示打印，输出打印
-    bool printProcess=true;
-    bool showDetails=false;
+    bool printProcess=false;
+    bool showDetails=true;
     bool printOut=false;
     //手动设置变量
     static const int terminalSignals_MaxSize=42;//终结符最大数量，默认含有a-z
@@ -43,7 +44,7 @@ public:
     int unterminalSignals_size=26;
     char *unterminalSignalsPool=NULL;//非终结符池
     int unterminalSignalsPool_size=26;
-    char startSignal;//开始符
+    int startSignalIndex;//开始符Index
     
     //定义推导式结构体
     struct derivative{
@@ -90,6 +91,51 @@ public:
     void leftFactorExtract_all();//提取左因子总体
 };
 
+class FirstAndFllow{
+    BaseData *baseData=nullptr;
+    
+    //First集和Fllow集的存储数据结构(注:setElems_size!=0 或 hasNull=true时为收敛状态)
+    struct FirstStruct{
+        char cID;//列标
+        string setElems;
+        bool hasNull;//是否有空集
+    };
+    struct FllowStruct{
+        char cID;//列标
+        string setElems;
+    };
+    FirstStruct* FirstSet=nullptr;
+    FllowStruct* FllowSet=nullptr;
+    int F_size=-1;
+    
+    struct FllowTrans{
+        char src;
+        char dst;
+    };
+    queue<FllowTrans> TransSet;
+    
+public:
+    //构造函数
+    FirstAndFllow(BaseData* baseData);
+    
+    //计算First集
+    void calFirst();
+    bool ifFirstSetRein(int index);//根据index判断是否收敛
+    string mergeString(string a,string b);//合并两个String
+    string mergeString(string a,char b);
+    
+    //计算Fllow集
+    void calFllow();
+    string getFirst(const string& aim);
+    void initTransSet();
+    
+    //通用函数
+    void initFirstAndFllowSet();
+    bool IfTwoStringsHaveSameElem(const string& a,const string& b);//判断两个字符串是否含有相同元素
+    int FindIndexByLeftCharInSets(char c);//根据非终结符返回Index
+    void printSetState(int id);//0打印First集，1打印Fllow集
+    
+};
 
 
 //定义语法分析数据结构
@@ -97,6 +143,7 @@ class SyntacticTree{
 private:
     BaseData *baseData;
     void processRawData();//包括读取数据，消除左递归，提取左因子
+    void calFirstAndFllow();//求First集和Fllow集
     
 public:
     
