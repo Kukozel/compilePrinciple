@@ -35,6 +35,6 @@ int main(int argc, const char * argv[]) {
     //实验2:
     
     //part 1
-    SyntacticTree *showLab2Part1ForExample=new SyntacticTree("SyntacticAnalysisSource.txt");
+    FundamentalLL1 *showLab2Part1ForExample=new FundamentalLL1("SyntacticAnalysisSource.txt","aaabd");
 
 }

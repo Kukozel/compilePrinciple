@@ -29,7 +29,7 @@ public:
     static const int terminalSignals_MaxSize=42;//终结符最大数量，默认含有a-z
     string terminalSignals_add=".()*";//补充的终结符集合
     static const int unterminalSignals_MaxSize=42;//非终结符最大数量，默认A-Z
-    static const int unterminalSignalsPool_MaxSize=26;//终结符地址池，默认A-Z
+    static const int unterminalSignalsPool_MaxSize=26;//非终结符地址池，默认A-Z
     static const int signalsSetUnit_MaxSize=10;//推导式右侧推导式集单元最大个数
     static const int derivativeSet_MaxSize=42;//推导式集合最大个数
     static const char derivative_empty='#';//空条件符号
@@ -92,6 +92,7 @@ public:
 };
 
 class FirstAndFllow{
+private:
     BaseData *baseData=nullptr;
     
     //First集和Fllow集的存储数据结构(注:setElems_size!=0 或 hasNull=true时为收敛状态)
@@ -104,17 +105,18 @@ class FirstAndFllow{
         char cID;//列标
         string setElems;
     };
-    FirstStruct* FirstSet=nullptr;
-    FllowStruct* FllowSet=nullptr;
     int F_size=-1;
-    
     struct FllowTrans{
         char src;
         char dst;
     };
-    queue<FllowTrans> TransSet;
     
 public:
+    //基本数据
+    FirstStruct* FirstSet=nullptr;
+    FllowStruct* FllowSet=nullptr;
+    queue<FllowTrans> TransSet;
+    
     //构造函数
     FirstAndFllow(BaseData* baseData);
     
@@ -134,21 +136,76 @@ public:
     bool IfTwoStringsHaveSameElem(const string& a,const string& b);//判断两个字符串是否含有相同元素
     int FindIndexByLeftCharInSets(char c);//根据非终结符返回Index
     void printSetState(int id);//0打印First集，1打印Fllow集
+};
+
+class LL1Table{
+private:
+    BaseData *baseData=nullptr;
+    FirstAndFllow* firstAndFllow=nullptr;
+    const int defaultMaxSize=30;//默认定长数组大小
+public:
+    //基本信息
+    struct TableElem{//分离的推导式单元
+        char row_char;
+        string cloumn_string;
+    };
+    TableElem *tableElems;//推导式单元集,大小2倍defaultMaxSize
+    int tableElems_size=0;
+    char *columns;//列标
+    int columns_size;
+    char *rows;//行表
+    int rows_size;
+    int *table_LL1;//LL(1)表
+    int table_LL1_size;
+    const int null_inLL1=-2;//LL(1)表中为空的项
+    char NullCharSignal;//空符号
+    //通用函数
+    string mergeTerminalSignals(string& src,char dst);//忽略空转移符号
+    void initTable();
+    void printTable();
+
+    //填表
+    int getRowIndex(char c);
+    int getColumnIndex(char c);
+    void FillIndex(char row,char col,int Index);//在同一位置填两个元素会报错
+    string GetFirstToFill(const string& str,bool& haveNull);
+    void FillTable();
+
+    //构造函数
+    LL1Table(BaseData* baseData,FirstAndFllow* firstAndFllow);
+};
+//下推自动机
+class PushdownAutomataLL1{
+private:
+    string *targetString=nullptr;
+    LL1Table *table;
+public:
+    PushdownAutomataLL1(LL1Table * ll1Table);
+    //读取目标字符串
+    bool getTargetString(string& target);
+    //判断是都符合语法
+    bool runPushdownAutomata();
+    
     
 };
 
-
-//定义语法分析数据结构
-class SyntacticTree{
+//定义语法分析LL1基本调用
+class FundamentalLL1{
 private:
     BaseData *baseData;
+    FirstAndFllow *firstAndFllow;
+    LL1Table *ll1Table;
+    PushdownAutomataLL1 * pushdownAutomataLL;
+    string *targetString;
+    
     void processRawData();//包括读取数据，消除左递归，提取左因子
     void calFirstAndFllow();//求First集和Fllow集
+    void calLL1Table();//求LL(1)预测分析表
+    void calPushdownAutomataLL1();
     
 public:
-    
     //构造函数部分
-    SyntacticTree(string SourceFile);
+    FundamentalLL1(string SourceFile,string tString);
     
 };
  

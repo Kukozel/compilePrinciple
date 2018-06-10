@@ -565,7 +565,7 @@ void FirstAndFllow::initTransSet(){
 
 void FirstAndFllow::calFllow(){
     //条件1
-    FllowSet[baseData->startSignalIndex].setElems="$";
+    FllowSet[baseData->startSignalIndex].setElems=baseData->derivative_carve;
     //条件2
     for(int i=0;i<baseData->derivativeSet_size;i++){
         BaseData::derivative tempDerivative=baseData->derivativeSet[i];
@@ -606,54 +606,295 @@ FirstAndFllow::FirstAndFllow(BaseData* baseData):baseData(baseData){
 }
 
 
+//LL(1)预测分析表
+//通用函数
+string LL1Table::mergeTerminalSignals(string& src,char dst){
+    if (dst==baseData->derivative_empty)    //忽略空转移符号
+        return src;
+    bool ifNewTerminalSignal=true;
+    for(int i=0;i<src.length();i++)
+        if(src[i]==dst){
+            ifNewTerminalSignal=false;
+            break;
+        }
+    if(ifNewTerminalSignal)
+        return src+dst;
+    return src;
+}
+
+void LL1Table::initTable(){
+    rows_size=baseData->derivativeSet_size;
+    rows=new char[rows_size];//行坐标
+    string column_string="";
+    tableElems=new TableElem[defaultMaxSize*2];//装载
+    tableElems_size=0;
+    for(int i=0;i<rows_size;i++){
+        char L_char=baseData->derivativeSet[i].LeftUnterminalSignal;
+        rows[i]=L_char;
+        for (int j=0; j<baseData->derivativeSet[i].signalsSetUnit_size; j++) {
+            tableElems[tableElems_size].row_char=L_char;
+            tableElems[tableElems_size++].cloumn_string=baseData->derivativeSet[i].signalsSetUnit[j];
+            for(int k=0;k<baseData->derivativeSet[i].signalsSetUnit[j].length();k++){
+                char tk=baseData->derivativeSet[i].signalsSetUnit[j][k];
+                if(!baseData->isAnUnterminalSignal(tk))
+                    column_string=mergeTerminalSignals(column_string,tk);
+            }
+        }
+    }
+    //处理列标
+    columns_size=(int)column_string.length()+1;
+    columns=new char[columns_size];
+    for (int i=0; i<column_string.length(); i++)
+        columns[i]=column_string[i];
+    columns[column_string.length()]=baseData->derivative_carve;
+    //初始化LL1表(-1为初始，意为不填)
+    table_LL1_size=rows_size*columns_size;
+    table_LL1=new int[table_LL1_size];
+    for (int i=0; i<table_LL1_size; i++)
+        table_LL1[i]=-1;
+    //处理空符号
+    NullCharSignal=baseData->derivative_empty;
+}
+
+void LL1Table::printTable(){
+    cout<<"Index 对照表:"<<endl;
+    for (int i=0; i<tableElems_size; i++)
+        cout<<tableElems[i].row_char<<">"<<tableElems[i].cloumn_string<<" \tIndex: "<<i<<endl;
+    cout<<"空转移 \tIndex:"<<null_inLL1<<endl;
+    cout<<"默认不填 \tIndex:-1"<<endl<<endl;
+    cout<<"LL(1)预测分析表:"<<endl;
+    cout<<" ";
+    for (int i=0; i<columns_size; i++)
+        cout<<" \t"<<columns[i];
+    cout<<endl;
+    for(int i=0;i<rows_size;i++){
+        cout<<rows[i];
+        for (int j=0; j<columns_size; j++)
+            cout<<"\t"<<table_LL1[i*columns_size+j];
+        cout<<endl;
+    }
+}
+
+//填表
+int LL1Table::getRowIndex(char c){
+    for (int i=0; i<rows_size; i++)
+        if (rows[i]==c)
+            return i;
+    cerr<<"无法获取列标Index!"<<endl;
+    exit(-1);
+}
+
+int LL1Table::getColumnIndex(char c){
+    for (int i=0; i<columns_size; i++)
+        if (columns[i]==c)
+            return i;
+    cerr<<"无法获取行标Index!"<<endl;
+    exit(-1);
+}
+
+void LL1Table::FillIndex(char row,char col,int Index){
+    int rowID=getRowIndex(row);
+    int colID=getColumnIndex(col);
+    int whereID=rowID*columns_size+colID;
+    if (table_LL1[whereID]!=-1) {
+        cerr<<"错误!同一位置填写了两个Index!非LL(1)文法!"<<endl;
+        exit(-1);
+    }else
+        table_LL1[whereID]=Index;
+}
+
+string LL1Table::GetFirstToFill(const string& str,bool& haveNull){
+    string result="";
+    if(str[0]==baseData->derivative_empty){
+        haveNull=true;
+        return result;
+    }
+    unsigned long len=str.length();
+    for (int i=0; i<len; i++) {
+        char t=str[i];
+        if(baseData->isATerminalSignal(t)){//终结符
+            result=firstAndFllow->mergeString(result, t);
+            haveNull=false;
+            break;
+        }
+        int Char_index=firstAndFllow->FindIndexByLeftCharInSets(t);
+        result=firstAndFllow->mergeString(result,firstAndFllow->FirstSet[Char_index].setElems);
+        if(!firstAndFllow->FirstSet[Char_index].hasNull){
+            haveNull=false;
+            break;
+        }
+        haveNull=true;
+    }
+    return result;
+}
+
+void LL1Table::FillTable(){
+    for(int i=0;i<tableElems_size;i++){
+        //当是空转移时，往Fllow集合中填
+        string tempChar=tableElems[i].cloumn_string;
+        bool hasAnNull=false;
+        string tempAim=GetFirstToFill(tempChar,hasAnNull);
+        if(tempAim.length()>0)
+            for (int j=0; j<tempAim.length(); j++)
+                FillIndex(tableElems[i].row_char,tempAim[j],i);
+        //填写空项
+        if(hasAnNull){
+            int fllowIndex=firstAndFllow->FindIndexByLeftCharInSets(tableElems[i].row_char);
+            string fllowString=firstAndFllow->FllowSet[fllowIndex].setElems;
+            for (int j=0; j<fllowString.length(); j++)
+                FillIndex(tableElems[i].row_char,fllowString[j],null_inLL1);
+        }
+    }
+}
+
+//构造函数
+LL1Table::LL1Table(BaseData* baseData,FirstAndFllow* firstAndFllow):baseData(baseData),firstAndFllow(firstAndFllow){
+    if(baseData==nullptr||firstAndFllow==nullptr){
+        cerr<<"传入数据指针错误!"<<endl;
+        exit(-1);
+    }
+}
+
+
+//LL1下推自动机
+
+bool PushdownAutomataLL1::getTargetString(string& target){
+    targetString=&target;
+    if(targetString==nullptr){
+        cerr<<"传入空指针"<<endl;
+        return false;
+    }
+    if(targetString->length()<=0){
+        cerr<<"传入空字符串"<<endl;
+        return false;
+    }
+    return true;
+}
+
+bool PushdownAutomataLL1::runPushdownAutomata(){
+    stack<char> Signal;
+    Signal.push(table->rows[0]);
+    int Sentence_len=(int)targetString->length();
+    int Index=0;
+    char *Sentence=new char[Sentence_len+1];
+    strcpy(Sentence, targetString->c_str());
+    while(!Signal.empty() || Index!=Sentence_len){
+        if(Signal.empty() || Index<0 || Index>=Sentence_len){
+            cerr<<"发生越界错误!"<<endl;
+            return false;
+        }
+        if(Signal.top()==Sentence[Index]){//match
+            Signal.pop();
+            ++Index;
+            continue;
+        }
+        int rowID=table->getRowIndex(Signal.top());
+        int colID=table->getColumnIndex(Sentence[Index]);
+        int aimID=table->table_LL1[rowID*table->columns_size+colID];
+        if(aimID==-1){
+            cerr<<"查表错误!"<<endl;
+            return false;
+        }
+        if(aimID==table->null_inLL1){//推出空
+            Signal.pop();
+            continue;
+        }
+        string *tempSignalString=&table->tableElems[aimID].cloumn_string;
+        char *tempNewSentence=new char[tempSignalString->length()+1];
+        strcpy(tempNewSentence, tempSignalString->c_str());
+        if (tempNewSentence[0] == table->NullCharSignal) {
+            Signal.pop();
+            continue;
+        }
+        //倒叙进栈
+        Signal.pop();
+        for(int i=(int)tempSignalString->length()-1;i>=0;--i)
+            Signal.push(tempNewSentence[i]);
+    }
+    cout<<"匹配成功!"<<endl;
+    return true;
+}
+
+
+//构造函数
+PushdownAutomataLL1::PushdownAutomataLL1(LL1Table * ll1Table):table(ll1Table){
+    if(ll1Table==nullptr){
+        cerr<<"传入数据指针错误!"<<endl;
+        exit(-1);
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////
-void SyntacticTree::processRawData(){
+void FundamentalLL1::processRawData(){
     //消除左递归
     DataPreprocessing* dataPreprocessing=new DataPreprocessing(baseData);
     dataPreprocessing->ReomveLeftRecursion_all();
     if(baseData->printProcess){
-        cout<<carveUpLine<<endl<<"执行消除左递归ing..."<<endl;
+        cout<<"执行消除左递归ing..."<<endl;
         baseData->printDerivativeSet();
         cout<<carveUpLine<<endl;
     }
     //提取左因子
     dataPreprocessing->leftFactorExtract_all();
     if(baseData->printProcess){
-        cout<<carveUpLine<<endl<<"执行提取左因子ing..."<<endl;
+        cout<<"执行提取左因子ing..."<<endl<<carveUpLine<<endl;
         baseData->printDerivativeSet();
         cout<<carveUpLine<<endl;
     }
     if (baseData->showDetails) {
-        cout<<carveUpLine<<endl<<"已执行消除左递归,提取左因子!"<<endl;
+        cout<<"已执行消除左递归,提取左因子!"<<endl;
         baseData->printDerivativeSet();
-        cout<<carveUpLine<<endl;
     }
 }
 
-void SyntacticTree::calFirstAndFllow(){
-    //初始化
-    FirstAndFllow *FF=new FirstAndFllow(baseData);
-    FF->initFirstAndFllowSet();
+void FundamentalLL1::calFirstAndFllow(){
+    firstAndFllow->initFirstAndFllowSet();
     //求First集
-    FF->calFirst();
+    firstAndFllow->calFirst();
     //求Fllow集
-    FF->calFllow();
+    firstAndFllow->calFllow();
     if(baseData->showDetails){
-        cout<<carveUpLine<<endl<<"执行First集与Fllow集运算ing..."<<endl;
-        FF->printSetState(0);
-        FF->printSetState(1);
-        cout<<carveUpLine<<endl;
+        cout<<"执行First集与Fllow集运算ing..."<<endl<<carveUpLine<<endl;
+        firstAndFllow->printSetState(0);
+        firstAndFllow->printSetState(1);
     }
 }
 
-SyntacticTree::SyntacticTree(string SourceFile){
+void FundamentalLL1::calLL1Table(){
+    ll1Table->initTable();
+    ll1Table->FillTable();
+    if (baseData->showDetails) {
+        cout<<carveUpLine<<endl<<"完成LL(1)预测分析表!"<<endl<<carveUpLine<<endl;
+        ll1Table->printTable();
+        cout<<carveUpLine<<endl;
+    }
+    
+}
+
+void FundamentalLL1::calPushdownAutomataLL1(){
+    if(targetString==nullptr || targetString->length()<1){
+        cerr<<"字符串存在错误!"<<endl;
+        exit(-1);
+    }
+    pushdownAutomataLL->getTargetString(*targetString);
+    pushdownAutomataLL->runPushdownAutomata();
+}
+
+FundamentalLL1::FundamentalLL1(string SourceFile,string tString){
     //初始化基本数据
     baseData=new BaseData(SourceFile);
     //读取数据，消除左递归，提取左因子
-    //processRawData();
+    processRawData();
     //计算First集和Fllow集
+    firstAndFllow=new FirstAndFllow(baseData);
     calFirstAndFllow();
     //构造LL(1)预测分析表
+    ll1Table=new LL1Table(baseData,firstAndFllow);
+    calLL1Table();
+    //LL1下推自动机
+    targetString=&tString;
+    pushdownAutomataLL=new PushdownAutomataLL1(ll1Table);
+    calPushdownAutomataLL1();
     
 }
 
