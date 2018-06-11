@@ -452,6 +452,32 @@ void SignStream::init_othersSignal(){
     cout<<"----------------------------------------"<<endl;
     cout<<"----------------------------------------"<<endl;
 }
+//序列化操作
+void SignStream::signalsSe(string filename){
+    signalElems::signalElems result;
+    int number=resultSignalSaver->numbers;
+    result.set_elems_length(number);
+    for (int i=0; i<number; ++i) {
+        result.add_noindex(resultSignalSaver->NoIndex[i]);
+        result.add_noitem(resultSignalSaver->NoItem[i]);
+    }
+    result.add_noindex_explain("关键词");
+    result.add_noindex_explain("标识符");
+    result.add_noindex_explain("分隔符");
+    result.add_noindex_explain("运算符");
+    result.add_noindex_explain("整数");
+    result.add_noindex_explain("浮点数");
+    result.add_noindex_explain("字符");
+    result.add_noindex_explain("字符串");
+    //序列化到文件
+    fstream output(filename,ios::out|ios::trunc|ios::binary);
+    if(!result.SerializeToOstream(&output)){
+        cerr<<"序列化失败!"<<endl;
+        exit(-1);
+    }
+    output.close();
+}
+
 //构造函数
 SignStream::SignStream(){
     init_keywordSignal();

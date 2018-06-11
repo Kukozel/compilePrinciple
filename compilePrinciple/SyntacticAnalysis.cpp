@@ -9,6 +9,7 @@
 #include "SyntacticAnalysis.hpp"
 #include "HandleFiles.hpp"
 
+
 //定义显示状态时的分割横线
 string carveUpLine="-------------------------------------------";
 
@@ -780,8 +781,12 @@ bool PushdownAutomataLL1::runPushdownAutomata(){
     strcpy(Sentence, targetString->c_str());
     while(!Signal.empty() || Index!=Sentence_len){
         if(Signal.empty() || Index<0 || Index>=Sentence_len){
+            if(!Signal.empty() && Index==Sentence_len){
+                Sentence[Index]='$';
+            }else{
             cerr<<"发生越界错误!"<<endl;
             return false;
+            }
         }
         if(Signal.top()==Sentence[Index]){//match
             Signal.pop();
@@ -822,6 +827,54 @@ PushdownAutomataLL1::PushdownAutomataLL1(LL1Table * ll1Table):table(ll1Table){
         cerr<<"传入数据指针错误!"<<endl;
         exit(-1);
     }
+}
+
+
+//用于序列化
+void LL1Table::initLL1Serialize(string filename){
+    tableElems::tableElems result;
+    //推导式单元集
+    result.set_elems_length(tableElems_size);
+    for (int i=0; i<tableElems_size; ++i) {
+        tableElems::tableElems::elem *newElem= result.add_elems();
+        string temp="";
+        temp+=tableElems[i].row_char;
+        newElem->set_row_char(temp);
+        newElem->set_cloumn_string(tableElems[i].cloumn_string);
+    }
+    //列标
+    result.set_columns_length(columns_size);
+    for (int i=0; i<columns_size; ++i){
+        string temp="";
+        temp+=columns[i];
+        result.add_columns(temp);
+    }
+    
+    //行标
+    result.set_rows_length(rows_size);
+    for (int i=0; i<rows_size; ++i){
+        string temp="";
+        temp+=rows[i];
+        result.add_rows(temp);
+    }
+    
+    //LL(1)表
+    result.set_table_ll1_length(table_LL1_size);
+    for (int i=0; i<table_LL1_size; ++i)
+        result.add_table_ll1(table_LL1[i]);
+    //其他
+    result.set_null_inll1(null_inLL1);
+    result.set_error_inll1(-1);
+    string temp="";
+    temp+=NullCharSignal;
+    result.set_nullcharsignal(temp);
+    //序列化到文件
+    fstream output(filename,ios::out|ios::trunc|ios::binary);
+    if(!result.SerializeToOstream(&output)){
+        cerr<<"序列化失败!"<<endl;
+        exit(-1);
+    }
+    output.close();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -868,7 +921,6 @@ void FundamentalLL1::calLL1Table(){
         ll1Table->printTable();
         cout<<carveUpLine<<endl;
     }
-    
 }
 
 void FundamentalLL1::calPushdownAutomataLL1(){
@@ -880,7 +932,18 @@ void FundamentalLL1::calPushdownAutomataLL1(){
     pushdownAutomataLL->runPushdownAutomata();
 }
 
-FundamentalLL1::FundamentalLL1(string SourceFile,string tString){
+void FundamentalLL1::testPushdownAutomataLL1(string tString){
+    //LL1下推自动机
+    targetString=&tString;
+    pushdownAutomataLL=new PushdownAutomataLL1(ll1Table);
+    calPushdownAutomataLL1();
+}
+
+void FundamentalLL1::LL1TableSe(string filename){
+     ll1Table->initLL1Serialize(filename);
+}
+
+FundamentalLL1::FundamentalLL1(string SourceFile){
     //初始化基本数据
     baseData=new BaseData(SourceFile);
     //读取数据，消除左递归，提取左因子
@@ -891,11 +954,6 @@ FundamentalLL1::FundamentalLL1(string SourceFile,string tString){
     //构造LL(1)预测分析表
     ll1Table=new LL1Table(baseData,firstAndFllow);
     calLL1Table();
-    //LL1下推自动机
-    targetString=&tString;
-    pushdownAutomataLL=new PushdownAutomataLL1(ll1Table);
-    calPushdownAutomataLL1();
-    
 }
 
 

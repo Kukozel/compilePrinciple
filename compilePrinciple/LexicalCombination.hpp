@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <string>
 #include "LexicalAnalysis.hpp"
+#include "signalElemsToSe.pb.h"
 using namespace std;
 
 class   SignStream{
@@ -102,6 +103,9 @@ public:
     //构造函数
     SignStream();
     SignStream(string targetString,bool showDetail,bool writer);
+    
+    //序列化到文件
+    void signalsSe(string filename);
 };
 
 #endif /* LexicalCombination_hpp */

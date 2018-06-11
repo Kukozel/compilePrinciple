@@ -12,7 +12,11 @@
 #include <iostream>
 #include <stack>
 #include <string>
-#include<queue>
+#include <queue>
+#include <iostream>
+#include <fstream>
+#include "tableElemsToSe.pb.h"
+
 
 
 using namespace std;
@@ -153,7 +157,7 @@ public:
     int tableElems_size=0;
     char *columns;//列标
     int columns_size;
-    char *rows;//行表
+    char *rows;//行标
     int rows_size;
     int *table_LL1;//LL(1)表
     int table_LL1_size;
@@ -171,9 +175,13 @@ public:
     string GetFirstToFill(const string& str,bool& haveNull);
     void FillTable();
 
+    //用于序列化
+    void initLL1Serialize(string filename);
+    
     //构造函数
     LL1Table(BaseData* baseData,FirstAndFllow* firstAndFllow);
 };
+
 //下推自动机
 class PushdownAutomataLL1{
 private:
@@ -189,6 +197,7 @@ public:
     
 };
 
+
 //定义语法分析LL1基本调用
 class FundamentalLL1{
 private:
@@ -201,11 +210,13 @@ private:
     void processRawData();//包括读取数据，消除左递归，提取左因子
     void calFirstAndFllow();//求First集和Fllow集
     void calLL1Table();//求LL(1)预测分析表
-    void calPushdownAutomataLL1();
+    void calPushdownAutomataLL1();//LL1下推自动机
     
 public:
     //构造函数部分
-    FundamentalLL1(string SourceFile,string tString);
+    FundamentalLL1(string SourceFile);
+    void testPushdownAutomataLL1(string tString);
+    void LL1TableSe(string filename);
     
 };
  
