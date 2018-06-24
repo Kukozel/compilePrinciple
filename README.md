@@ -1,5 +1,6 @@
 #说明
 ##文件命名
+###实验一:
 >- main.cpp为程序入口。附有程序调用说明。
 >- LexicalAnalysis.hpp 为头文件。词法分析part1部分的程序的声明，实现正规式到最小DFA的实现。包含详细注释。
 >- LexicalAnalysis.cpp 为对应头文件程序的具体实现。包含详细注释。
@@ -7,6 +8,15 @@
 >- LexicalCombination.cpp 为对应头文件程序的具体实现。包含详细注释。
 >-HandleFiles.hpp为头文件。实现读取文件的操作。包含详细注释。
 >-HandleFiles.cpp 为对应头文件程序的具体实现。包含详细注释。
+
+###实验二:
+>- SyntaticAnalysis.hpp为头文件。语法分析部分的程序的声明，实现推导式到LL1下推自动机。包含详细注释。
+>- SyntaticAnalysis.cpp 为对应头文件程序的具体实现。包含详细注释。
+>- SyntaticAnalysisCombination.cpp 使用记号流与LL1预测分析表来进行语法分析的独立程序。包含详细注释。
+> SyntaticAnalysisCombination.cpp 为对应头文件程序的具体实现。包含详细注释。
+> -signalElemsToSe.pb.h和signalElemsToSe.pb.cc和tableElemsToSe.pb.h和tableElemsToSe.pb.cc为序列化时所需的文件。(使用Google Protocol Buffers)
+> -另附protobuf源文件，存于s1.zip中。
+> - s1.zip还附含其他所需测试文件。
 
 ##LexicalAnalysis模块说明
 ###基本信息说明
@@ -48,3 +58,28 @@
 ##HandleFiles模块说明
 ###基本信息说明
 >- 函数 string readFileIntoString(string filename) 接收string形式的文件名，并将文件内容以string形式读出。
+
+##SyntaticAnalysis模块说明
+###基本信息说明
+>- 通过FundamentalLL1( )函数调用。
+> - 传入参数为文件名。文件内容为推导式集合以>分开推导式左右；$为推导式结束；#为空。
+>- 实现消除左递归。(不支持间接左递归)
+>- 实现提取左因子。(支持寻找最长公共因子)
+> -实现求First集。
+> -实现求Follow集。
+> -实现构造预测分析表。(1维int数组)
+> -实现下推自动机原理。
+
+###输出文件说明
+>- 输出序列化后的预测分析表。
+
+##SyntaticAnalysisCombination模块说明
+###基本信息说明
+>- 实现读取序列化的记号流。(支持多个)
+> -实现读取序列化的LL1预测分析表。(支持多个)
+> -实现语法分析。匹配合适的语法。
+
+###输出文件说明
+>- 输出结果到SC_Result.txt。
+
+
